@@ -1,1 +1,1 @@
-# QuestMate-Licenta
+# QuestMate
