@@ -1,0 +1,7 @@
+.image-preview {
+    width: 150px; /* Adjust width */
+    height: 150px; /* Adjust height */
+    object-fit: cover; /* Ensures the image covers the box without distorting */
+    border-radius: 8px; /* Optional: Adds rounded corners */
+    margin-top: 10px; /* Adds some space above the image */
+}
