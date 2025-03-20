@@ -1,0 +1,83 @@
+.profile-container {
+    width: 80%;
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+    background-color: #f4f4f9;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;  /* Align items vertically */
+    justify-content: center;  /* Center the items horizontally */
+    margin-bottom: 20px;
+}
+
+.profile-header img {
+    width: 150px;  /* Adjust the width */
+    height: 150px;  /* Adjust the height */
+    border-radius: 50%;  /* Makes the image circular */
+    object-fit: cover;  /* Ensures the image is cropped to fit within the circle */
+    margin-right: 20px;  /* Adds spacing between image and text */
+}
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    font-size: 16px;
+}
+
+.profile-info label {
+    font-weight: 500;
+    color: #666;
+}
+
+.profile-info .profile-detail {
+    font-weight: 600;
+    color: #333;
+}
+
+.edit-button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.edit-button:hover {
+    background-color: #45a049;
+}
+
+.search-results {
+    margin-top: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.search-result-item {
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #ddd;
+}
+
+.search-result-item button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.search-result-item button:hover {
+    background-color: #45a049;
+}

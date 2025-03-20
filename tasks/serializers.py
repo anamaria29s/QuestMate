@@ -1,0 +1,31 @@
+from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
+from .models import   UserProfile, User, Friendship
+
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    bio = serializers.CharField(required=False, allow_blank=True)  
+    birth_date = serializers.DateField(required=False, allow_null=True)
+    profile_picture = serializers.ImageField(required=False, allow_null=True) 
+    friends = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserProfile
+        fields = ['bio', 'birth_date', 'profile_picture', 'friends']
+
+    def get_friends(self, obj):
+        # Get the list of friends from the Friendship model
+        friends = Friendship.objects.filter(user=obj.user).values_list('friend__username', flat=True)
+        return list(friends)
+
+    def update(self, instance, validated_data):
+        instance.bio = validated_data.get('bio', instance.bio)
+        instance.birth_date = validated_data.get('birth_date', instance.birth_date)
+        
+        if 'profile_picture' in validated_data:
+            instance.profile_picture = validated_data.get('profile_picture', instance.profile_picture)
+
+        instance.save()
+        return instance
+
+
