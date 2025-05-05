@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom'; // ✅ Import useParams
 import axios from 'axios';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import './Calendar.css'; 
+import './Calendar.css';
 
-const CalendarPage = () => {
+const SharedCalendarPage = () => {
+    const { id: calendarId } = useParams(); // ✅ Use useParams to get calendar ID
     const [tasks, setTasks] = useState([]);
     const [taskTitle, setTaskTitle] = useState('');
     const [taskDescription, setTaskDescription] = useState('');
@@ -15,20 +17,21 @@ const CalendarPage = () => {
     const fetchTasks = async (date) => {
         try {
             const formattedDate = date.toISOString().split('T')[0];
-            const response = await axios.get(`http://127.0.0.1:8000/api/tasks/?date=${formattedDate}`, {
+            const response = await axios.get(`http://127.0.0.1:8000/api/shared-tasks/${calendarId}/?date=${formattedDate}`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
             });
-
-            console.log("All Tasks from API:", response.data);
             setTasks(response.data);
         } catch (error) {
             console.error("Error fetching tasks:", error);
         }
     };
+    
 
     useEffect(() => {
-        fetchTasks(selectedDate);
-    }, [selectedDate]);
+        if (calendarId) {
+            fetchTasks(selectedDate);
+        }
+    }, [calendarId, selectedDate]);
 
     const handleDateChange = (newDate) => {
         setSelectedDate(newDate);
@@ -41,28 +44,26 @@ const CalendarPage = () => {
     };
 
     const handleTaskSubmit = async () => {
-        if (editingTask) {
-            await axios.put(`http://127.0.0.1:8000/api/tasks/${editingTask.id}/edit/`, {
-                date: selectedDate.toISOString().split('T')[0],
-                title: taskTitle,
-                description: taskDescription,
-            }, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
-            });
-            setEditingTask(null);
-        } else {
-            await axios.post('http://127.0.0.1:8000/api/tasks/add/', {
-                date: selectedDate.toISOString().split('T')[0],  
-                title: taskTitle,
-                description: taskDescription
-            }, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
-            });
-        }
+        const url = editingTask
+            ? `http://127.0.0.1:8000/api/shared-tasks/${calendarId}/${editingTask.id}/edit/`
+            : `http://127.0.0.1:8000/api/shared-tasks/${calendarId}/add/`;
+    
+        const method = editingTask ? axios.put : axios.post;
+    
+        await method(url, {
+            date: selectedDate.toISOString().split('T')[0],
+            title: taskTitle,
+            description: taskDescription,
+        }, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
+        });
+    
+        setEditingTask(null);
         setTaskTitle('');
         setTaskDescription('');
         setTimeout(() => fetchTasks(selectedDate), 500);
     };
+    
 
     const handleEdit = (task) => {
         setEditingTask(task);
@@ -71,14 +72,14 @@ const CalendarPage = () => {
     };
 
     const handleDelete = async (taskId) => {
-        await axios.delete(`http://127.0.0.1:8000/api/tasks/${taskId}/delete/`, {
+        await axios.delete(`http://127.0.0.1:8000/api/shared-tasks/${calendarId}/${taskId}/delete/`, {
             headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
         });
         setTimeout(() => fetchTasks(selectedDate), 500);
     };
 
     const toggleTaskCompletion = async (task) => {
-        await axios.put(`http://127.0.0.1:8000/api/tasks/${task.id}/toggle/`, {
+        await axios.put(`http://127.0.0.1:8000/api/shared-tasks/${calendarId}/${task.id}/toggle/`, {
             ...task,
             completed: !task.completed,
         }, {
@@ -90,14 +91,12 @@ const CalendarPage = () => {
     return (
         <div className="calendar-page">
             <div className="calendar-container">
-                <h2>Calendar</h2>
-                
+                <h2>Shared Calendar</h2>
                 <div className="calendar-nav">
                     <button onClick={() => changeMonth(-1)}>← Previous</button>
                     <span>{currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
                     <button onClick={() => changeMonth(1)}>Next →</button>
                 </div>
-
                 <Calendar 
                     onChange={handleDateChange} 
                     value={selectedDate} 
@@ -146,4 +145,4 @@ const CalendarPage = () => {
     );
 };
 
-export default CalendarPage;
+export default SharedCalendarPage;

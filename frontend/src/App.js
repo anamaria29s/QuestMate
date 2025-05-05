@@ -9,6 +9,9 @@ import Profile from './pages/Profile';
 import UpdateProfile from './pages/UpdateProfile';
 import Header from './Header';
 import './App.css'; 
+import SharedCalendars from './pages/SharedCalendars';
+import SharedCalendarPage from './pages/SharedCalendarPage';
+
 
 function App() {
     return (
@@ -23,6 +26,9 @@ function App() {
                     <Route path="/" element={<Navigate to="/calendar" />} />
                     <Route path="/profile/:username" element={<Profile />} />
                     <Route path="/profile/:username/update" element={<UpdateProfile />} />
+                    <Route path="/sharedcalendars" element={<SharedCalendars />} />
+                    <Route path="/shared-calendar/:id" element={<SharedCalendarPage />} />
+
                 </Routes>
             </div>
         </Router>

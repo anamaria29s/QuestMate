@@ -12,10 +12,14 @@ from django.contrib.auth import authenticate
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import UserProfile, Friendship, FriendRequest
-from .serializers import   UserProfileUpdateSerializer
+from .models import UserProfile, Friendship, FriendRequest, Task, SharedTask, SharedCalendar, Membership
+from .serializers import   UserProfileUpdateSerializer, TaskSerializer, SharedCalendarSerializer, SharedTaskSerializer, MembershipSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+from django.utils.timezone import now
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.db import transaction
 
 def index(request):
     return render(request, 'tasks/index.html')
@@ -38,12 +42,33 @@ def signup(request):
     email = request.data.get('email')
     password = request.data.get('password')
 
+    # Check if password is too short
+    if len(password) < 8:
+        return Response({'error': 'Password is too short, must be at least 8 characters'}, status=400)
+
+    # Check if username already exists
     if User.objects.filter(username=username).exists():
         return Response({'error': 'Username already exists'}, status=400)
 
-    user = User.objects.create_user(username=username, password=password)
-    return Response(get_tokens_for_user(user), status=201)
+    # Check if email already exists
+    if User.objects.filter(email=email).exists():
+        return Response({'error': 'Email already exists'}, status=400)
 
+    # Start a transaction block
+    try:
+        with transaction.atomic():
+            # Create the user
+            user = User.objects.create_user(username=username, password=password, email=email)
+
+            # Ensure the user profile is created along with the user, and handle the profile creation properly
+            if not UserProfile.objects.filter(user=user).exists():
+                UserProfile.objects.create(user=user, email=email)
+
+            return Response({'message': 'User created successfully'}, status=201)
+
+    except Exception as e:
+        # If any error occurs, rollback the transaction and no data will be saved
+        return Response({'error': str(e)}, status=400)
 
 @api_view(['POST'])
 def login(request):
@@ -63,7 +88,7 @@ def get_profile(request, username):
     
     return JsonResponse({
         "username": user.username,
-        "email": user.username,
+        "email": user.email,
         "bio": profile.bio,
         "birth_date": profile.birth_date,
         "profile_picture": profile.profile_picture.name if profile.profile_picture else None,
@@ -200,6 +225,17 @@ def get_friend_requests(request):
     request_list = [{"sender": fr.sender.username, "created_at": fr.created_at} for fr in friend_requests]
     return Response({"pending_requests": request_list}, status=status.HTTP_200_OK)
 
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_my_friends(request):
+    user = request.user
+    friends = Friendship.objects.filter(user=user).select_related('friend')
+    friend_usernames = [{"id": f.friend.id, "username": f.friend.username} for f in friends]
+    return JsonResponse(friend_usernames, safe=False)
+
+
 @api_view(['DELETE'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -226,3 +262,341 @@ def remove_friend(request):
 
     except User.DoesNotExist:
         return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+    
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])  
+@permission_classes([IsAuthenticated])
+def get_tasks(request):
+    print(f"User: {request.user}")
+    if not request.user.is_authenticated:
+        return Response({'detail': 'Authentication credentials were not provided.'}, status=401)
+
+    date = request.query_params.get('date', now().date())
+
+    tasks = Task.objects.filter(user=request.user, date=date)
+    serializer = TaskSerializer(tasks, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])  
+@permission_classes([IsAuthenticated])
+def add_task(request):
+    if not request.user.is_authenticated:
+        return Response({'detail': 'Authentication credentials were not provided.'}, status=401)
+
+    task_data = request.data
+    task_data['user'] = request.user.id  
+
+    serializer = TaskSerializer(data=task_data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PUT'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def edit_task(request, task_id):
+    try:
+        task = Task.objects.get(id=task_id, user=request.user)
+    except Task.DoesNotExist:
+        return Response({'error': 'Task not found or you do not have permission to edit this task.'}, status=status.HTTP_404_NOT_FOUND)
+
+    task_data = request.data
+    task.title = task_data.get('title', task.title)
+    task.description = task_data.get('description', task.description)
+    task.date = task_data.get('date', task.date)
+
+    task.save()
+
+    serializer = TaskSerializer(task)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_task(request, task_id):
+    try:
+        task = Task.objects.get(id=task_id, user=request.user)
+        task.delete()
+        return Response({'message': 'Task deleted successfully.'}, status=status.HTTP_200_OK)
+    except Task.DoesNotExist:
+        return Response({'error': 'Task not found or you do not have permission to delete this task.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['PUT'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def toggle_task_completion(request, task_id):
+    try:
+        task = Task.objects.get(id=task_id, user=request.user)
+    except Task.DoesNotExist:
+        return Response({'error': 'Task not found or you do not have permission to toggle completion of this task.'}, status=status.HTTP_404_NOT_FOUND)
+
+    task.completed = not task.completed 
+    task.save()
+
+    serializer = TaskSerializer(task)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def list_shared_calendars(request):
+    if not request.user.is_authenticated:
+        return Response({'detail': 'Authentication credentials were not provided.'}, status=401)
+
+    calendars = SharedCalendar.objects.filter(
+        Q(owner=request.user) | Q(memberships__receiver=request.user, memberships__status='accepted')
+    ).distinct()
+
+    # Get pending invitations
+    pending_invites = Membership.objects.filter(
+        receiver=request.user,
+        status='pending'
+    )
+
+    calendars_serializer = SharedCalendarSerializer(calendars, many=True)
+    invites_serializer = MembershipSerializer(pending_invites, many=True)
+
+    return Response({
+        'calendars': calendars_serializer.data,
+        'pending_invites': invites_serializer.data,
+    })
+
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_shared_calendar(request):
+    if not request.user.is_authenticated:
+        return Response({'detail': 'Authentication credentials were not provided.'}, status=401)
+
+    name = request.data.get('name')
+
+    if not name:
+        return Response({'detail': 'Missing calendar name.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    calendar = SharedCalendar.objects.create(name=name, owner=request.user)
+
+    return Response(SharedCalendarSerializer(calendar).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def invite_to_calendar(request):
+    if not request.user.is_authenticated:
+        return Response({'detail': 'Authentication credentials were not provided.'}, status=401)
+
+    calendar_id = request.data.get('calendar_id')
+    receiver_id = request.data.get('receiver_id')
+
+    if not calendar_id or not receiver_id:
+        return Response({'detail': 'Missing calendar_id or receiver_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        calendar = SharedCalendar.objects.get(id=calendar_id)
+    except SharedCalendar.DoesNotExist:
+        return Response({'detail': 'Calendar not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        receiver = User.objects.get(id=receiver_id)
+    except User.DoesNotExist:
+        return Response({'detail': 'Receiver not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if Membership.objects.filter(calendar=calendar, receiver=receiver).exists():
+        return Response({'detail': 'Invitation already sent or user already invited.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    Membership.objects.create(
+        calendar=calendar,
+        sender=request.user,
+        receiver=receiver,
+        status='pending'
+    )
+
+    return Response({'detail': 'Invitation sent successfully.'}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def accept_calendar_invite(request):
+    membership_id = request.data.get('membership_id')
+
+    if not membership_id:
+        return Response({'detail': 'Missing membership_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        invite = Membership.objects.get(id=membership_id, receiver=request.user)
+    except Membership.DoesNotExist:
+        return Response({'detail': 'Invitation not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if invite.status != 'pending':
+        return Response({'detail': 'This invitation is already handled.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    invite.status = 'accepted'
+    invite.save()
+
+    return Response({'detail': 'Invitation accepted.'}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def decline_calendar_invite(request):
+    membership_id = request.data.get('membership_id')
+
+    if not membership_id:
+        return Response({'detail': 'Missing membership_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        invite = Membership.objects.get(id=membership_id, receiver=request.user)
+    except Membership.DoesNotExist:
+        return Response({'detail': 'Invitation not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if invite.status != 'pending':
+        return Response({'detail': 'This invitation is already handled.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    invite.status = 'rejected'
+    invite.save()
+
+    return Response({'detail': 'Invitation rejected.'}, status=status.HTTP_200_OK)
+
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def list_calendar_invites(request):
+    if not request.user.is_authenticated:
+        return Response({'detail': 'Authentication credentials were not provided.'}, status=401)
+
+    invites = Membership.objects.filter(receiver=request.user, status='pending')
+
+    data = [
+        {
+            'membership_id': invite.id,
+            'calendar_name': invite.calendar.name,
+            'sender_username': invite.sender.username,
+        }
+        for invite in invites
+    ]
+
+    return Response(data, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def add_shared_task(request, calendar_id):
+    if not request.user.is_authenticated:
+        return Response({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    title = request.data.get('title')
+    description = request.data.get('description', '')
+    date = request.data.get('date')
+
+    if not title or not date:
+        return Response({'detail': 'Missing required fields: title or date.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        shared_calendar = SharedCalendar.objects.get(id=calendar_id)
+    except SharedCalendar.DoesNotExist:
+        return Response({'detail': 'Shared calendar not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    shared_task = SharedTask(
+        calendar=shared_calendar,
+        title=title,
+        description=description,
+        date=date,
+        completed=False
+    )
+    shared_task.save()
+
+    serializer = SharedTaskSerializer(shared_task)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+@api_view(['PUT'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def edit_shared_task(request, calendar_id, shared_task_id):
+    try:
+        shared_task = SharedTask.objects.get(id=shared_task_id)
+
+        if shared_task.calendar.owner != request.user and not shared_task.calendar.memberships.filter(receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You are neither the owner nor a member of this shared calendar.'}, status=status.HTTP_403_FORBIDDEN)
+
+        shared_task.title = request.data.get('title', shared_task.title)
+        shared_task.description = request.data.get('description', shared_task.description)
+        shared_task.date = request.data.get('date', shared_task.date)
+
+        shared_task.save()
+
+        serializer = SharedTaskSerializer(shared_task)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except SharedTask.DoesNotExist:
+        return Response({'error': 'Shared task not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_shared_task(request, calendar_id, shared_task_id):
+    try:
+        shared_task = SharedTask.objects.get(id=shared_task_id)
+
+        if shared_task.calendar.owner != request.user and not shared_task.calendar.memberships.filter(receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You are neither the owner nor a member of this shared calendar.'}, status=status.HTTP_403_FORBIDDEN)
+
+        shared_task.delete()
+        return Response({'message': 'Shared task deleted successfully.'}, status=status.HTTP_200_OK)
+
+    except SharedTask.DoesNotExist:
+        return Response({'error': 'Shared task not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['PUT'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def toggle_shared_task_completion(request, calendar_id, shared_task_id):
+    try:
+        shared_task = SharedTask.objects.get(id=shared_task_id)
+
+        if shared_task.calendar.owner != request.user and not shared_task.calendar.memberships.filter(receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You are neither the owner nor a member of this shared calendar.'}, status=status.HTTP_403_FORBIDDEN)
+
+        shared_task.completed = not shared_task.completed
+        shared_task.save()
+
+        serializer = SharedTaskSerializer(shared_task)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except SharedTask.DoesNotExist:
+        return Response({'error': 'Shared task not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_shared_tasks(request, calendar_id):
+    if not request.user.is_authenticated:
+        return Response({'detail': 'Authentication credentials were not provided.'}, status=401)
+
+    task_date = request.query_params.get('date', now().date())
+
+    try:
+        shared_calendar = SharedCalendar.objects.get(id=calendar_id)
+    except SharedCalendar.DoesNotExist:
+        return Response({'error': 'Shared calendar not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        if shared_calendar.owner != request.user and not shared_calendar.memberships.filter(receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You are neither the owner nor a member of this shared calendar.'}, status=status.HTTP_403_FORBIDDEN)
+    except Exception as e:
+        return Response({'error': f'Error checking membership or ownership: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+    tasks = SharedTask.objects.filter(calendar=shared_calendar, date=task_date)
+
+    serializer = SharedTaskSerializer(tasks, many=True)
+
+    return Response(serializer.data, status=status.HTTP_200_OK)
