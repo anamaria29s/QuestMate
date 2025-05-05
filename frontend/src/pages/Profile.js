@@ -18,7 +18,7 @@ const Profile = () => {
     useEffect(() => {
         axios.get(`http://127.0.0.1:8000/api/profile/${username}/`)
             .then(response => setProfile(response.data))
-            .catch(() => setProfile(null));
+            .catch(() => setProfile({}));
         
         fetchFriendRequests();
     }, [username]);
@@ -96,7 +96,7 @@ const Profile = () => {
     return (
         <div className="profile-container">
             <div className="profile-header">
-                {profile.profile_picture && <img src={`http://127.0.0.1:8000/media/${profile.profile_picture}`} alt="Profile" className="profile-image" />}
+                {profile && profile.profile_picture && <img src={`http://127.0.0.1:8000/media/${profile.profile_picture}`} alt="Profile" className="profile-image" />}
                 <h2>{profile.username ? `${profile.username}'s Profile` : "Loading Profile..."}</h2>
             </div>
             <p><strong>Email:</strong> {email ? email : "No email provided"}</p>

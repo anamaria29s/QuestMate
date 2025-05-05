@@ -8,16 +8,17 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import signup, login, get_profile, add_friend, update_profile, search_users
 urlpatterns = [
     path('', views.index, name='index'), 
-    # path('index/', views.index, name='index'), 
-    # path('profile/', views.profile_view, name='profile'), 
-    # path('profile/edit/', views.edit_profile, name='edit_profile'),  
     path('api/signup/', signup, name='signup'),
     path('api/login/', login, name='login'),
-    # path('api/calendar/', views.get_tasks, name='calendar'),
-    # path('api/tasks/', views.get_tasks, name='get_tasks'),
-    # # path('api/tasks/add/', views.add_task, name='add_task'),
-    # path('api/reminders/', views.get_reminders, name='get_reminders'),
-    # path('api/reminders/add/', views.add_reminder, name='add_reminder'),
+
+    # Tasks
+    path('api/tasks/', views.get_tasks, name='get_tasks'),
+    path('api/tasks/<int:task_id>/edit/', views.edit_task, name='edit_task'),
+    path('api/tasks/<int:task_id>/delete/', views.delete_task, name='delete_task'),
+    path('api/tasks/<int:task_id>/toggle/', views.toggle_task_completion, name='toggle_task_completion'),
+    path('api/tasks/add/', views.add_task, name='add_task'),
+
+    # Profile & Friends
     path('api/profile/<str:username>/', get_profile, name="get_profile"),
     path('api/profile/<str:username>/update/', update_profile, name="update_profile"),
     path('api/add-friend/', add_friend, name="add_friend"),
@@ -27,5 +28,23 @@ urlpatterns = [
     path('api/reject-friend-request/', views.reject_friend_request, name="reject_friend_request"),
     path('api/friend-requests/', views.get_friend_requests, name="get_friend_requests"),
     path('api/remove-friend/', views.remove_friend, name="remove-friend"),
+    path('api/friends/', views.get_my_friends, name='get_my_friends'),
+
+
+    # Shared Calendars
+    path('api/shared-calendars/', views.list_shared_calendars, name='list_shared_calendars'),
+    path('api/shared-calendars/create/', views.create_shared_calendar, name='create_shared_calendar'),
+    path('api/shared-calendars/invite/', views.invite_to_calendar, name='invite_to_calendar'),
+    path('api/shared-calendars/accept/', views.accept_calendar_invite, name='accept_calendar_invite'),
+    path('api/shared-calendars/decline/', views.decline_calendar_invite, name='decline_calendar_invite'),
+    path('api/shared-calendars/invites/', views.list_calendar_invites, name='list_calendar_invites'),
+
+    # Shared Tasks
+    path('api/shared-tasks/<int:calendar_id>/', views.get_shared_tasks, name='get_shared_tasks'),
+    path('api/shared-tasks/<int:calendar_id>/<int:shared_task_id>/edit/', views.edit_shared_task, name='edit_shared_task'),
+    path('api/shared-tasks/<int:calendar_id>/<int:shared_task_id>/delete/', views.delete_shared_task, name='delete_shared_task'),
+    path('api/shared-tasks/<int:calendar_id>/<int:shared_task_id>/toggle/', views.toggle_shared_task_completion, name='toggle_shared_task_completion'),
+    path('api/shared-tasks/<int:calendar_id>/add/', views.add_shared_task, name='add_shared_task'),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

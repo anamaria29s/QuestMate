@@ -1,33 +1,122 @@
 .calendar-page {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
+    align-items: start;
+    gap: 30px;
     padding: 20px;
+    width: 100%;
+    height: 85vh;
+    background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
 }
 
 .calendar-container {
-    width: 50%;
-    padding-right: 20px;
+    flex: 1;
+    max-width: 40%;
+    text-align: center;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+
+.react-calendar {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+
+/* Stil pentru cifrele zilelor din calendar */
+.react-calendar__tile {
+    color: #333;  /* Schimbă culoarea numerelor zilelor */
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* Stil pentru ziua selectată */
+.react-calendar__tile--active {
+    background: #6f42c1 !important; /* Culoare de fundal pentru ziua selectată */
+    color: white !important; /* Culoarea cifrei din ziua selectată */
+    border-radius: 5px;
+}
+
+/* Stil pentru zilele hover */
+.react-calendar__tile:hover {
+    background: rgba(111, 66, 193, 0.2);
+    border-radius: 5px;
+}
+
+/* Stil pentru zilele de weekend */
+.react-calendar__month-view__days__day--weekend {
+    color: red !important;
 }
 
 .tasks-container {
-    width: 40%;
-    padding-left: 20px;
+    flex: 1.5;
+    max-width: 55%;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.tasks-container ul {
+    list-style: none;
+    padding: 0;
+}
+
+.tasks-container li {
+    background-color: #f9f9f9;
+    margin: 10px 0;
+    padding: 15px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.3s;
+}
+
+.tasks-container li.completed {
+    background-color: #d4edda;
 }
 
 input, textarea {
     width: 100%;
     padding: 10px;
     margin-bottom: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
 }
 
 button {
     padding: 10px;
-    background-color: #007bff;
+    background-color: #6f42c1;
     color: white;
     border: none;
+    border-radius: 5px;
     cursor: pointer;
+    transition: background-color 0.3s ease;
 }
 
 button:hover {
-    background-color: #0056b3;
+    background-color: #5a31a2;
+}
+
+@media screen and (max-width: 1024px) {
+    .calendar-page {
+        flex-direction: column;
+        align-items: center;
+    }
+    .calendar-container, .tasks-container {
+        max-width: 90%;
+    }
 }

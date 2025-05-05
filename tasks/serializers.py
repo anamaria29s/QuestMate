@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import   UserProfile, User, Friendship
+from .models import   UserProfile, User, Friendship, Task, SharedCalendar, SharedTask, Membership
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -29,3 +29,32 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         return instance
 
 
+class TaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = '__all__'
+
+class SharedTaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SharedTask
+        fields = ['id', 'calendar', 'title', 'description', 'date', 'completed']
+
+        
+class SharedCalendarSerializer(serializers.ModelSerializer):
+    tasks = SharedTaskSerializer(many=True, read_only=True)
+    owner = serializers.SerializerMethodField() 
+
+    class Meta:
+        model = SharedCalendar
+        fields = ['id', 'name', 'owner', 'tasks']
+    
+    def get_owner(self, obj):
+        return obj.owner.username if obj.owner else None
+
+
+class MembershipSerializer(serializers.ModelSerializer):
+    calendar = SharedCalendarSerializer(read_only=True)
+
+    class Meta:
+        model = Membership
+        fields = ['id', 'calendar']
