@@ -10,6 +10,7 @@ urlpatterns = [
     path('', views.index, name='index'), 
     path('api/signup/', signup, name='signup'),
     path('api/login/', login, name='login'),
+    path('api/token/refresh/', views.token_refresh, name='token_refresh'),
 
     # Tasks
     path('api/tasks/', views.get_tasks, name='get_tasks'),
@@ -45,6 +46,14 @@ urlpatterns = [
     path('api/shared-tasks/<int:calendar_id>/<int:shared_task_id>/delete/', views.delete_shared_task, name='delete_shared_task'),
     path('api/shared-tasks/<int:calendar_id>/<int:shared_task_id>/toggle/', views.toggle_shared_task_completion, name='toggle_shared_task_completion'),
     path('api/shared-tasks/<int:calendar_id>/add/', views.add_shared_task, name='add_shared_task'),
+
+    # User achievements endpoints
+    path('api/user/achievements/', views.get_user_achievements, name='user_achievements'),
+    path('api/user/stats/', views.get_user_stats, name='user_stats'),
+    path('api/achievements/', views.get_available_achievements, name='available_achievements'),
+
+    # Calendar leaderboard endpoint
+    path('api/calendars/<int:calendar_id>/leaderboard/', views.get_calendar_leaderboard, name='calendar_leaderboard'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

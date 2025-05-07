@@ -1,83 +1,396 @@
-.profile-container {
-    width: 80%;
-    max-width: 600px;
+/* Profile.css - Updated Modern Design */
+.profile-page {
+    max-width: 900px;
     margin: 40px auto;
-    padding: 20px;
-    background-color: #f4f4f9;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 0 20px;
+}
+
+.profile-container {
+    width: 100%;
+    background-color: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.profile-cover {
+    height: 180px;
+    background: linear-gradient(135deg, #7b61b3, #9a7ad4);
+    position: relative;
 }
 
 .profile-header {
     display: flex;
-    align-items: center;  /* Align items vertically */
-    justify-content: center;  /* Center the items horizontally */
+    flex-direction: column;
+    align-items: center;
+    padding: 0 30px 20px;
+    position: relative;
     margin-bottom: 20px;
+    border-bottom: 1px solid #f2f2f2;
 }
 
-.profile-header img {
-    width: 150px;  /* Adjust the width */
-    height: 150px;  /* Adjust the height */
-    border-radius: 50%;  /* Makes the image circular */
-    object-fit: cover;  /* Ensures the image is cropped to fit within the circle */
-    margin-right: 20px;  /* Adds spacing between image and text */
+.profile-image-container {
+    position: relative;
+    margin-top: -60px;
+    margin-bottom: 15px;
+}
+
+.profile-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.profile-name {
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.profile-email {
+    font-size: 15px;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.profile-body {
+    padding: 0 30px 30px;
+}
+
+.profile-section {
+    margin-bottom: 30px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #6d28d9;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title svg {
+    width: 20px;
+    height: 20px;
 }
 
 .profile-info {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    font-size: 16px;
+    background-color: #f9f7ff;
+    border-radius: 12px;
+    padding: 20px;
 }
 
-.profile-info label {
+.info-row {
+    display: flex;
+    margin-bottom: 16px;
+}
+
+.info-label {
+    width: 120px;
     font-weight: 500;
     color: #666;
+    flex-shrink: 0;
 }
 
-.profile-info .profile-detail {
-    font-weight: 600;
+.info-value {
     color: #333;
+    font-weight: 400;
 }
 
-.edit-button {
-    background-color: #4CAF50;
+.profile-action-button {
+    background-color: #6d28d9;
     color: white;
-    padding: 10px 20px;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.3s;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.edit-button:hover {
-    background-color: #45a049;
+.profile-action-button:hover {
+    background-color: #5b21b6;
+}
+
+.profile-action-button.secondary {
+    background-color: #f5f3ff;
+    color: #6d28d9;
+    border: 1px solid #e9d5ff;
+}
+
+.profile-action-button.secondary:hover {
+    background-color: #ede9fe;
+}
+
+.profile-action-button.danger {
+    background-color: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.profile-action-button.danger:hover {
+    background-color: #fecaca;
+}
+
+.friends-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.friend-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #f2f2f2;
+    transition: all 0.2s ease;
+}
+
+.friend-item:hover {
+    border-color: #e9d5ff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.friend-name {
+    font-weight: 500;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.friend-avatar {
+    width: 36px;
+    height: 36px;
+    background-color: #f5f3ff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6d28d9;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.friend-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.search-container {
+    margin-top: 20px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 15px;
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #9a7ad4;
+    box-shadow: 0 0 0 3px rgba(154, 122, 212, 0.1);
 }
 
 .search-results {
     margin-top: 10px;
-    max-height: 200px;
+    max-height: 250px;
     overflow-y: auto;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background-color: white;
 }
 
 .search-result-item {
-    padding: 10px;
+    padding: 12px 16px;
     display: flex;
     justify-content: space-between;
-    border-bottom: 1px solid #ddd;
+    align-items: center;
+    border-bottom: 1px solid #f2f2f2;
 }
 
-.search-result-item button {
-    background-color: #4CAF50;
-    color: white;
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.request-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.request-item {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #f2f2f2;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.request-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.status-message {
+    margin-top: 15px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background-color: #f9f7ff;
+    border-left: 4px solid #6d28d9;
+    color: #333;
+}
+
+/* Add these new styles to your existing Profile.css file */
+
+/* Achievement section styles */
+.achievements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.achievement-card {
+    display: flex;
+    align-items: center;
+    background-color: #f9fafb;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.achievement-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.achievement-icon {
+    font-size: 32px;
+    margin-right: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+}
+
+.achievement-details {
+    flex: 1;
+}
+
+.achievement-name {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.achievement-description {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.achievement-date {
+    margin: 0;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.no-achievements {
+    color: #6b7280;
+    font-style: italic;
+    margin: 16px 0;
+}
+
+.achievements-loading {
+    color: #6b7280;
+    margin: 16px 0;
+}
+
+/* Achievement alert styles */
+.achievement-alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    background-color: #f5f3ff;
+    border-left: 4px solid #8b5cf6;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    padding: 16px;
+    width: 320px;
+    max-width: 90vw;
+    display: flex;
+    align-items: flex-start;
+    animation: slideIn 0.3s ease-out forwards;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.achievement-alert-icon {
+    font-size: 36px;
+    margin-right: 16px;
+}
+
+.achievement-alert-content {
+    flex: 1;
+}
+
+.achievement-alert-content h4 {
+    margin: 0 0 8px 0;
+    color: #6d28d9;
+    font-size: 16px;
+}
+
+.achievement-alert-name {
+    margin: 0 0 4px 0;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.achievement-alert-description {
+    margin: 0;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.achievement-alert-close {
+    background: none;
     border: none;
-    padding: 5px 10px;
+    color: #9ca3af;
+    font-size: 20px;
     cursor: pointer;
-    border-radius: 4px;
+    padding: 0;
+    margin-left: 8px;
+    line-height: 1;
 }
 
-.search-result-item button:hover {
-    background-color: #45a049;
+.achievement-alert-close:hover {
+    color: #6b7280;
 }

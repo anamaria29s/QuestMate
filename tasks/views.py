@@ -12,8 +12,8 @@ from django.contrib.auth import authenticate
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import UserProfile, Friendship, FriendRequest, Task, SharedTask, SharedCalendar, Membership
-from .serializers import   UserProfileUpdateSerializer, TaskSerializer, SharedCalendarSerializer, SharedTaskSerializer, MembershipSerializer
+from .models import UserProfile, Friendship, FriendRequest, Task, SharedTask, SharedCalendar, Membership, UserAchievement, Achievement, UserStats, CalendarStats
+from .serializers import   UserProfileUpdateSerializer, TaskSerializer, SharedCalendarSerializer, SharedTaskSerializer, MembershipSerializer, AchievementSerializer, UserAchievementSerializer, UserStatsSerializer, CalendarStatsSerializer, LeaderboardSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from django.utils.timezone import now
@@ -24,7 +24,6 @@ from django.db import transaction
 def index(request):
     return render(request, 'tasks/index.html')
 
-# Generate JWT Token
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     print({
@@ -37,37 +36,47 @@ def get_tokens_for_user(user):
     }
 
 @api_view(['POST'])
+def token_refresh(request):
+    refresh_token = request.data.get('refresh')
+    
+    if not refresh_token:
+        return Response({'error': 'Refresh token is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        refresh = RefreshToken(refresh_token)
+        data = {
+            'access': str(refresh.access_token),
+            'refresh': str(refresh) 
+        }
+        return Response(data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+@api_view(['POST'])
 def signup(request):
     username = request.data.get('username')
     email = request.data.get('email')
     password = request.data.get('password')
 
-    # Check if password is too short
     if len(password) < 8:
         return Response({'error': 'Password is too short, must be at least 8 characters'}, status=400)
 
-    # Check if username already exists
     if User.objects.filter(username=username).exists():
         return Response({'error': 'Username already exists'}, status=400)
 
-    # Check if email already exists
     if User.objects.filter(email=email).exists():
         return Response({'error': 'Email already exists'}, status=400)
 
-    # Start a transaction block
     try:
         with transaction.atomic():
-            # Create the user
             user = User.objects.create_user(username=username, password=password, email=email)
 
-            # Ensure the user profile is created along with the user, and handle the profile creation properly
             if not UserProfile.objects.filter(user=user).exists():
                 UserProfile.objects.create(user=user, email=email)
 
             return Response({'message': 'User created successfully'}, status=201)
 
     except Exception as e:
-        # If any error occurs, rollback the transaction and no data will be saved
         return Response({'error': str(e)}, status=400)
 
 @api_view(['POST'])
@@ -326,7 +335,6 @@ def delete_task(request, task_id):
     except Task.DoesNotExist:
         return Response({'error': 'Task not found or you do not have permission to delete this task.'}, status=status.HTTP_404_NOT_FOUND)
 
-
 @api_view(['PUT'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -336,8 +344,13 @@ def toggle_task_completion(request, task_id):
     except Task.DoesNotExist:
         return Response({'error': 'Task not found or you do not have permission to toggle completion of this task.'}, status=status.HTTP_404_NOT_FOUND)
 
-    task.completed = not task.completed 
+    was_completed = task.completed
+    task.completed = not task.completed
     task.save()
+    
+    if not was_completed and task.completed:
+        from .service import update_task_completion_stats
+        update_task_completion_stats(request.user)
 
     serializer = TaskSerializer(task)
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -561,18 +574,26 @@ def delete_shared_task(request, calendar_id, shared_task_id):
 def toggle_shared_task_completion(request, calendar_id, shared_task_id):
     try:
         shared_task = SharedTask.objects.get(id=shared_task_id)
+        calendar = SharedCalendar.objects.get(id=calendar_id)
 
         if shared_task.calendar.owner != request.user and not shared_task.calendar.memberships.filter(receiver=request.user, status='accepted').exists():
             return Response({'error': 'You are neither the owner nor a member of this shared calendar.'}, status=status.HTTP_403_FORBIDDEN)
 
+        was_completed = shared_task.completed
         shared_task.completed = not shared_task.completed
         shared_task.save()
+        
+        if not was_completed and shared_task.completed:
+            from .service import update_task_completion_stats
+            update_task_completion_stats(request.user, calendar)
 
         serializer = SharedTaskSerializer(shared_task)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     except SharedTask.DoesNotExist:
         return Response({'error': 'Shared task not found.'}, status=status.HTTP_404_NOT_FOUND)
+    except SharedCalendar.DoesNotExist:
+        return Response({'error': 'Shared calendar not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
@@ -599,4 +620,71 @@ def get_shared_tasks(request, calendar_id):
 
     serializer = SharedTaskSerializer(tasks, many=True)
 
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_user_achievements(request):
+    user_achievements = UserAchievement.objects.filter(user=request.user).select_related('achievement')
+    serializer = UserAchievementSerializer(user_achievements, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_user_stats(request):
+    try:
+        user_stats = UserStats.objects.get(user=request.user)
+    except UserStats.DoesNotExist:
+        user_stats = UserStats.objects.create(user=request.user)
+    
+    serializer = UserStatsSerializer(user_stats)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_calendar_leaderboard(request, calendar_id):
+    try:
+        calendar = SharedCalendar.objects.get(id=calendar_id)
+        
+        has_access = (calendar.owner == request.user or 
+                      calendar.memberships.filter(receiver=request.user, status='accepted').exists())
+        
+        if not has_access:
+            return Response(
+                {'error': 'You do not have access to this calendar'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        participants = [calendar.owner]
+        participants.extend(calendar.accepted_participants())
+        
+        for user in participants:
+            CalendarStats.objects.get_or_create(user=user, calendar=calendar)
+        
+        leaderboard = CalendarStats.objects.filter(
+            calendar=calendar
+        ).order_by('-tasks_completed')
+        
+        serializer = LeaderboardSerializer(leaderboard, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    except SharedCalendar.DoesNotExist:
+        return Response(
+            {'error': 'Calendar not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_available_achievements(request):
+    achievements = Achievement.objects.all()
+    serializer = AchievementSerializer(achievements, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)

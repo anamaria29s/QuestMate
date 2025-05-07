@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import   UserProfile, User, Friendship, Task, SharedCalendar, SharedTask, Membership
+from .models import   UserProfile, User, Friendship, Task, SharedCalendar, SharedTask, Membership, Achievement, UserStats, UserAchievement, CalendarStats
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -58,3 +58,44 @@ class MembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = Membership
         fields = ['id', 'calendar']
+
+class AchievementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Achievement
+        fields = ['id', 'name', 'description', 'icon', 'requirement_type', 'threshold']
+
+
+class UserAchievementSerializer(serializers.ModelSerializer):
+    achievement = AchievementSerializer(read_only=True)
+    
+    class Meta:
+        model = UserAchievement
+        fields = ['id', 'achievement', 'date_earned']
+
+
+class UserStatsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserStats
+        fields = ['total_tasks_completed', 'current_streak', 'longest_streak', 'last_active_date']
+
+
+class CalendarStatsSerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = CalendarStats
+        fields = ['id', 'user', 'username', 'tasks_completed', 'last_updated']
+    
+    def get_username(self, obj):
+        return obj.user.username if obj.user else None
+
+
+class LeaderboardSerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = CalendarStats
+        fields = ['username', 'tasks_completed']
+    
+    def get_username(self, obj):
+        return obj.user.username if obj.user else None

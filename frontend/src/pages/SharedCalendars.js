@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import './SharedCalendars.css';
 
 const SharedCalendars = () => {
   const [calendars, setCalendars] = useState([]);
@@ -11,6 +12,8 @@ const SharedCalendars = () => {
   const [friends, setFriends] = useState([]);
   const [filteredFriends, setFilteredFriends] = useState([]);
   const [receiverId, setReceiverId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchCalendars();
@@ -19,6 +22,7 @@ const SharedCalendars = () => {
 
   const fetchCalendars = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('access');
       const response = await axios.get('http://127.0.0.1:8000/api/shared-calendars/', {
         headers: {
@@ -27,8 +31,12 @@ const SharedCalendars = () => {
       });
       setCalendars(response.data.calendars || []);
       setPendingInvites(response.data.pending_invites || []);
+      setError(null);
     } catch (error) {
       console.error('Error fetching shared calendars:', error);
+      setError('Failed to load calendars. Please try again later.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -47,9 +55,16 @@ const SharedCalendars = () => {
   };
 
   const handleCreateCalendar = async () => {
+    if (!calendarName.trim()) {
+      setError('Please enter a calendar name');
+      return;
+    }
+    
     const token = localStorage.getItem("access");
     if (!token) return;
+    
     try {
+      setLoading(true);
       await axios.post('http://127.0.0.1:8000/api/shared-calendars/create/', {
         name: calendarName,
       }, {
@@ -59,23 +74,28 @@ const SharedCalendars = () => {
       });
       setCalendarName('');
       fetchCalendars();
+      setError(null);
     } catch (error) {
       console.error('Error creating calendar:', error);
+      setError('Failed to create calendar. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleInvite = async () => {
-
-    console.log("Selected Calendar ID:", selectedCalendarId);
-    console.log("Receiver ID:", receiverId);
-
-    if (!selectedCalendarId || !receiverId) {
-      console.error("Missing calendar ID or receiver ID");
+    if (!selectedCalendarId) {
+      setError('Please select a calendar');
       return;
     }
+    
+    if (!receiverId) {
+      setError('Please select a friend to invite');
+      return;
+    }
+    
     try {
-      console.log("Sending invite with:", { selectedCalendarId, receiverId });
-  
+      setLoading(true);
       await axios.post('http://127.0.0.1:8000/api/shared-calendars/invite/', {
         calendar_id: selectedCalendarId,
         receiver_id: receiverId,
@@ -86,18 +106,20 @@ const SharedCalendars = () => {
       });
       setInviteUsername('');
       setSelectedCalendarId(null);
+      setReceiverId(null);
       fetchCalendars();
+      setError(null);
     } catch (error) {
       console.error('Error sending invite:', error);
-      if (error.response) {
-        console.log("Response error:", error.response.data);
-      }
+      setError('Failed to send invitation. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
-  
 
   const handleAccept = async (membershipId) => {
     try {
+      setLoading(true);
       await axios.post('http://127.0.0.1:8000/api/shared-calendars/accept/', {
         membership_id: membershipId,
       }, {
@@ -108,11 +130,15 @@ const SharedCalendars = () => {
       fetchCalendars();
     } catch (error) {
       console.error('Error accepting invite:', error);
+      setError('Failed to accept invitation. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDecline = async (membershipId) => {
     try {
+      setLoading(true);
       await axios.post('http://127.0.0.1:8000/api/shared-calendars/decline/', {
         membership_id: membershipId,
       }, {
@@ -123,6 +149,9 @@ const SharedCalendars = () => {
       fetchCalendars();
     } catch (error) {
       console.error('Error declining invite:', error);
+      setError('Failed to decline invitation. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -135,134 +164,144 @@ const SharedCalendars = () => {
       const filtered = friends.filter(f =>
         f.username.toLowerCase().startsWith(input.toLowerCase())
       );
-      console.log(filtered);  // Debugging to check the filtered list
       setFilteredFriends(filtered);
     }
   };
-  
 
   const handleSelectFriend = (friend) => {
-    console.log("Selected Friend:", friend);  // Debugging
-    setInviteUsername(friend.username);  // Set the username
-    setReceiverId(friend.id);            // Set the receiverId to the friend's ID
-    setFilteredFriends([]);              // Clear the filtered list
+    setInviteUsername(friend.username);
+    setReceiverId(friend.id);
+    setFilteredFriends([]);
   };
-  
 
   return (
-    <div className="p-4 max-w-3xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">Shared Calendars</h2>
-
-      {/* Existing Calendars */}
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold mb-2">Your Calendars</h3>
-        <ul className="list-disc ml-6">
-          {calendars.length > 0 ? (
-            calendars.map((cal) => (
-              <li key={cal.id}>
-                <span className="font-medium">{cal.name}</span>
-                <span className="text-sm text-gray-500 ml-2">(Created by: {cal.owner})</span>
-                <Link to={`/shared-calendar/${cal.id}`} className="text-blue-500 ml-2">View</Link>
-              </li>
-            ))
-          ) : (
-            <li>No calendars available.</li>
-          )}
-        </ul>
+    <div className="shared-calendars-container">
+      <div className="shared-calendars-header">
+        <h2>Shared Calendars</h2>
+        {error && <div className="error-message">{error}</div>}
       </div>
 
-      {/* Create New Calendar */}
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold mb-2">Create New Calendar</h3>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Calendar Name"
-            value={calendarName}
-            onChange={(e) => setCalendarName(e.target.value)}
-            className="border p-2 rounded w-full"
-          />
-          <button
-            onClick={handleCreateCalendar}
-            className="bg-blue-500 text-white px-4 py-2 rounded"
-          >
-            Create
-          </button>
-        </div>
-      </div>
-
-      {/* Invite User */}
-      <div className="mb-6 relative">
-        <h3 className="text-xl font-semibold mb-2">Invite to Calendar</h3>
-        <div className="flex flex-col gap-2">
-          <select
-            value={selectedCalendarId || ''}
-            onChange={(e) => setSelectedCalendarId(e.target.value)}
-            className="border p-2 rounded"
-          >
-            <option value="">Select a calendar</option>
-            {calendars.map((cal) => (
-              <option key={cal.id} value={cal.id}>
-                {cal.name}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            placeholder="Friend's Username"
-            value={inviteUsername}
-            onChange={handleUsernameChange}
-            className="border p-2 rounded"
-          />
-          {filteredFriends.length > 0 && (
-            <ul className="absolute z-10 bg-white border rounded shadow w-full mt-1 max-h-40 overflow-y-auto">
-              {filteredFriends.map((friend) => (
-                <li
-                  key={friend.id}
-                  onClick={() => handleSelectFriend(friend)} 
-                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                >
-                  {friend.username}
+      <div className="shared-calendars-content">
+        <div className="card calendars-list">
+          <h3>Your Calendars</h3>
+          {loading ? (
+            <div className="loader">Loading...</div>
+          ) : calendars.length > 0 ? (
+            <ul>
+              {calendars.map((cal) => (
+                <li key={cal.id} className="calendar-item">
+                  <div className="calendar-info">
+                    <span className="calendar-name">{cal.name}</span>
+                    <span className="calendar-owner">Created by: {cal.owner}</span>
+                  </div>
+                  <Link to={`/shared-calendar/${cal.id}`} className="view-btn">View</Link>
                 </li>
               ))}
             </ul>
+          ) : (
+            <p className="empty-message">No calendars available.</p>
           )}
+        </div>
+
+        <div className="card create-calendar">
+          <h3>Create New Calendar</h3>
+          <div className="form-group">
+            <input
+              type="text"
+              placeholder="Calendar Name"
+              value={calendarName}
+              onChange={(e) => setCalendarName(e.target.value)}
+              className="input-field"
+            />
+            <button
+              onClick={handleCreateCalendar}
+              className="action-btn create-btn"
+              disabled={loading}
+            >
+              {loading ? 'Creating...' : 'Create'}
+            </button>
+          </div>
+        </div>
+
+        <div className="card invite-section">
+          <h3>Invite to Calendar</h3>
+          <div className="form-group">
+            <select
+              value={selectedCalendarId || ''}
+              onChange={(e) => setSelectedCalendarId(e.target.value)}
+              className="select-field"
+            >
+              <option value="">Select a calendar</option>
+              {calendars.map((cal) => (
+                <option key={cal.id} value={cal.id}>
+                  {cal.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group autocomplete-wrapper">
+            <input
+              type="text"
+              placeholder="Friend's Username"
+              value={inviteUsername}
+              onChange={handleUsernameChange}
+              className="input-field"
+            />
+            {filteredFriends.length > 0 && (
+              <ul className="autocomplete-list">
+                {filteredFriends.map((friend) => (
+                  <li
+                    key={friend.id}
+                    onClick={() => handleSelectFriend(friend)} 
+                    className="autocomplete-item"
+                  >
+                    {friend.username}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <button
             onClick={handleInvite}
-            className="bg-green-500 text-white px-4 py-2 rounded"
+            className="action-btn invite-btn"
+            disabled={loading}
           >
-            Send Invite
+            {loading ? 'Sending...' : 'Send Invite'}
           </button>
         </div>
-      </div>
 
-      {/* Pending Invitations */}
-      {pendingInvites.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-xl font-semibold mb-2">Pending Invitations</h3>
-          <ul className="list-disc ml-6">
-            {pendingInvites.map((invite) => (
-              <li key={invite.id} className="mb-2">
-                <span>{invite.calendar.name} (from {invite.calendar.owner})</span>
-                <div className="flex gap-2 mt-1">
-                  <button
-                    onClick={() => handleAccept(invite.id)}
-                    className="bg-blue-600 text-white px-3 py-1 rounded"
-                  >
-                    Accept
-                  </button>
-                  <button
-                    onClick={() => handleDecline(invite.id)}
-                    className="bg-red-600 text-white px-3 py-1 rounded"
-                  >
-                    Decline
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        {pendingInvites.length > 0 && (
+          <div className="card pending-invites">
+            <h3>Pending Invitations</h3>
+            <ul>
+              {pendingInvites.map((invite) => (
+                <li key={invite.id} className="invite-item">
+                  <div className="invite-info">
+                    <span className="invite-calendar">{invite.calendar.name}</span>
+                    <span className="invite-from">from {invite.calendar.owner}</span>
+                  </div>
+                  <div className="invite-actions">
+                    <button
+                      onClick={() => handleAccept(invite.id)}
+                      className="action-btn accept-btn"
+                      disabled={loading}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => handleDecline(invite.id)}
+                      className="action-btn decline-btn"
+                      disabled={loading}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
