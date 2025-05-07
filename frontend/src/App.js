@@ -11,6 +11,8 @@ import Header from './Header';
 import './App.css'; 
 import SharedCalendars from './pages/SharedCalendars';
 import SharedCalendarPage from './pages/SharedCalendarPage';
+import AuthCheck from './AuthCheck';
+
 
 
 function App() {
@@ -19,7 +21,11 @@ function App() {
             <div className="App">
                 <Header />
                 <Routes>
-                    <Route path="/" element={<Home />} />
+                    <Route path="/" element={
+                        <AuthCheck>
+                            <Home />
+                        </AuthCheck>
+                    } />
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/calendar" element={<PrivateRoute component={CalendarPage} />} />

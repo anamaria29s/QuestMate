@@ -1,7 +1,148 @@
-.image-preview {
-    width: 150px; /* Adjust width */
-    height: 150px; /* Adjust height */
-    object-fit: cover; /* Ensures the image covers the box without distorting */
-    border-radius: 8px; /* Optional: Adds rounded corners */
-    margin-top: 10px; /* Adds some space above the image */
-}
+:root {
+    --primary-purple: #6200ea;
+    --light-purple: #b388ff;
+    --dark-purple: #4a148c;
+    --light-gray: #f5f5f7;
+    --text-dark: #2c2c2c;
+    --shadow: 0 4px 12px rgba(98, 0, 234, 0.15);
+    --transition: all 0.3s ease;
+  }
+  
+  .edit-profile {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+  }
+  
+  .edit-profile h2 {
+    color: var(--primary-purple);
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+    font-weight: 500;
+  }
+  
+  .form-group input[type="date"],
+  .form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: var(--transition);
+  }
+  
+  .form-group textarea {
+    min-height: 120px;
+    resize: vertical;
+  }
+  
+  .form-group input[type="date"]:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: var(--light-purple);
+    box-shadow: 0 0 0 2px rgba(179, 136, 255, 0.25);
+  }
+  
+  .file-input-container {
+    position: relative;
+    margin-bottom: 1rem;
+  }
+  
+  .file-input-label {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--light-purple);
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-bottom: 1rem;
+  }
+  
+  .file-input-label:hover {
+    background-color: var(--primary-purple);
+  }
+  
+  .file-input {
+    position: absolute;
+    left: -9999px;
+  }
+  
+  .image-preview-container {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0;
+  }
+  
+  .image-preview {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid var(--light-purple);
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+  }
+  
+  .buttons-container {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  
+  .btn {
+    flex: 1;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: center;
+  }
+  
+  .btn-primary {
+    background-color: var(--primary-purple);
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background-color: var(--dark-purple);
+    transform: translateY(-2px);
+  }
+  
+  .btn-secondary {
+    background-color: white;
+    color: var(--text-dark);
+    border: 1px solid #e0e0e0;
+  }
+  
+  .btn-secondary:hover {
+    background-color: var(--light-gray);
+    transform: translateY(-2px);
+  }
+  
+  @media (max-width: 768px) {
+    .edit-profile {
+      padding: 1.5rem;
+      margin: 1rem;
+    }
+    
+    .buttons-container {
+      flex-direction: column;
+    }
+  }

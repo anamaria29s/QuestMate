@@ -12,7 +12,6 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return self.user.username
-    
 
 class FriendRequest(models.Model):
     sender = models.ForeignKey(User, related_name="sent_requests", on_delete=models.CASCADE)
@@ -96,3 +95,56 @@ class Membership(models.Model):
         calendar_name = getattr(self.calendar, 'name', 'No Calendar')
         return f"{sender_username} -> {receiver_username} @ {calendar_name} ({self.status})"
 
+class Achievement(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    icon = models.CharField(max_length=50, default="trophy")  
+    requirement_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('daily', 'Daily Tasks'),
+            ('weekly', 'Weekly Tasks'),
+            ('streak', 'Streak'),
+            ('total', 'Total Tasks'),
+        ]
+    )
+    threshold = models.IntegerField()  
+    
+    def __str__(self):
+        return self.name
+
+
+class UserAchievement(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='achievements')
+    achievement = models.ForeignKey(Achievement, on_delete=models.CASCADE)
+    date_earned = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'achievement')
+    
+    def __str__(self):
+        return f"{self.user.username} earned {self.achievement.name}"
+
+
+class UserStats(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='stats')
+    total_tasks_completed = models.IntegerField(default=0)
+    current_streak = models.IntegerField(default=0)
+    longest_streak = models.IntegerField(default=0)
+    last_active_date = models.DateField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"Stats for {self.user.username}"
+
+
+class CalendarStats(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='calendar_stats')
+    calendar = models.ForeignKey(SharedCalendar, on_delete=models.CASCADE, related_name='user_stats')
+    tasks_completed = models.IntegerField(default=0)
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('user', 'calendar')
+    
+    def __str__(self):
+        return f"{self.user.username}'s stats for {self.calendar.name}"

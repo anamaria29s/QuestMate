@@ -1,122 +1,522 @@
-.calendar-page {
-    display: flex;
-    justify-content: center;
-    align-items: start;
-    gap: 30px;
-    padding: 20px;
-    width: 100%;
-    height: 85vh;
-    background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+/* CalendarPurple.css */
+:root {
+    --primary: #7e57c2;
+    --primary-light: #9575cd;
+    --primary-dark: #5e35b1;
+    --primary-transparent: rgba(126, 87, 194, 0.1);
+    --accent: #b39ddb;
+    --text-primary: #3c3c3c;
+    --text-secondary: #757575;
+    --background: #f9f7fe;
+    --card-bg: #ffffff;
+    --border-color: #e0e0e0;
+    --completed: #81c784;
+    --completed-bg: rgba(129, 199, 132, 0.1);
+    --shadow: 0 5px 15px rgba(126, 87, 194, 0.1);
+    --shadow-hover: 0 8px 20px rgba(126, 87, 194, 0.2);
+    --transition: all 0.3s ease;
 }
 
-.calendar-container {
-    flex: 1;
-    max-width: 40%;
-    text-align: center;
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.calendar-nav {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 10px;
-}
-
-
-.react-calendar {
-    width: 100%;
-    max-width: 100%;
-    border-radius: 10px;
-    border: none;
-    box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-
-/* Stil pentru cifrele zilelor din calendar */
-.react-calendar__tile {
-    color: #333;  /* Schimbă culoarea numerelor zilelor */
-    font-weight: bold;
-    font-size: 1.1rem;
-}
-
-/* Stil pentru ziua selectată */
-.react-calendar__tile--active {
-    background: #6f42c1 !important; /* Culoare de fundal pentru ziua selectată */
-    color: white !important; /* Culoarea cifrei din ziua selectată */
-    border-radius: 5px;
-}
-
-/* Stil pentru zilele hover */
-.react-calendar__tile:hover {
-    background: rgba(111, 66, 193, 0.2);
-    border-radius: 5px;
-}
-
-/* Stil pentru zilele de weekend */
-.react-calendar__month-view__days__day--weekend {
-    color: red !important;
-}
-
-.tasks-container {
-    flex: 1.5;
-    max-width: 55%;
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.tasks-container ul {
-    list-style: none;
+body {
+    background-color: var(--background);
+    margin: 0;
     padding: 0;
 }
 
-.tasks-container li {
-    background-color: #f9f9f9;
-    margin: 10px 0;
-    padding: 15px;
-    border-radius: 5px;
+.calendar-page {
+    display: flex;
+    height: 100vh;
+    max-width: 1400px;
+    margin: 0 auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Calendar Sidebar */
+.calendar-sidebar {
+    width: 350px;
+    background-color: var(--card-bg);
+    padding: 24px;
+    border-radius: 0;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+}
+
+.calendar-header h2 {
+    color: var(--primary-dark);
+    margin: 0 0 24px 0;
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+/* Calendar Navigation */
+.calendar-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.month-nav-btn {
+    background-color: var(--primary-transparent);
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    transition: background-color 0.3s;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    color: var(--primary);
+    font-size: 1.2rem;
+    font-weight: bold;
 }
 
-.tasks-container li.completed {
-    background-color: #d4edda;
+.month-nav-btn:hover {
+    background-color: var(--primary);
+    color: white;
 }
 
-input, textarea {
+.current-month {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+}
+
+.react-calendar {
     width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
+    border: none !important;
+    background-color: transparent;
+    font-family: inherit;
+    line-height: 1.4;
 }
 
-button {
-    padding: 10px;
-    background-color: #6f42c1;
+.react-calendar__navigation {
+    display: none; 
+}
+
+.react-calendar__month-view__weekdays {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: var(--primary);
+    padding: 8px 0;
+    text-decoration: none;
+    abbr {
+        text-decoration: none;
+    }
+}
+
+.react-calendar__month-view__weekdays__weekday {
+    padding: 10px 0;
+}
+
+.react-calendar__month-view__weekdays__weekday abbr {
+    text-decoration: none;
+}
+
+.react-calendar__tile {
+    padding: 14px 0;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    border-radius: 50%;
+    max-width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.react-calendar__tile:enabled:hover {
+    background-color: var(--primary-transparent);
+    color: var(--primary-dark);
+    border-radius: 50%;
+}
+
+.react-calendar__tile--active {
+    background-color: var(--primary) !important;
+    color: white !important;
+    border-radius: 50%;
+}
+
+.react-calendar__tile--now {
+    background-color: var(--primary-transparent);
+    color: var(--primary-dark);
+    font-weight: bold;
+}
+
+.react-calendar__tile.has-tasks::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    background-color: var(--primary);
+    border-radius: 50%;
+}
+
+/* Add Task Button */
+.add-task-button-container {
+    margin-top: auto;
+    padding-top: 20px;
+}
+
+.add-task-button {
+    width: 100%;
+    background-color: var(--primary);
     color: white;
     border: none;
-    border-radius: 5px;
+    padding: 12px;
+    border-radius: 8px;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    font-weight: 600;
+    transition: var(--transition);
+    font-size: 1rem;
 }
 
-button:hover {
-    background-color: #5a31a2;
+.add-task-button.active {
+    background-color: #e0e0e0;
+    color: var(--text-primary);
 }
 
-@media screen and (max-width: 1024px) {
+.add-task-button:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.add-task-button.active:hover {
+    background-color: #d0d0d0;
+    transform: none;
+    box-shadow: none;
+}
+
+.tasks-main {
+    flex: 1;
+    padding: 32px;
+    overflow-y: auto;
+    background-color: var(--background);
+}
+
+.selected-date-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.selected-date-header h3 {
+    color: var(--primary-dark);
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.task-count {
+    background-color: var(--primary-transparent);
+    color: var(--primary-dark);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.task-form {
+    background-color: var(--card-bg);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+}
+
+.task-form h4 {
+    color: var(--primary-dark);
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 1.2rem;
+}
+
+.task-form input[type="text"],
+.task-form textarea {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+    box-sizing: border-box;
+    transition: var(--transition);
+}
+
+.task-form input[type="text"]:focus,
+.task-form textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-transparent);
+}
+
+.task-form textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.form-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.submit-btn {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.submit-btn:hover {
+    background-color: var(--primary-dark);
+}
+
+.submit-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.cancel-btn {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.cancel-btn:hover {
+    background-color: #f5f5f5;
+}
+
+.tasks-list {
+    margin-top: 16px;
+}
+
+.tasks-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.tasks-list li {
+    background-color: var(--card-bg);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    border-left: 4px solid var(--primary);
+}
+
+.tasks-list li:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+}
+
+.tasks-list li.completed {
+    border-left-color: var(--completed);
+    background-color: var(--completed-bg);
+}
+
+.task-header {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.task-checkbox {
+    display: block;
+    position: relative;
+    padding-left: 30px;
+    margin-right: 12px;
+    cursor: pointer;
+    font-size: 22px;
+    user-select: none;
+    min-height: 22px;
+    margin-top: 2px;
+}
+
+.task-checkbox input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 22px;
+    width: 22px;
+    background-color: #fff;
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    transition: var(--transition);
+}
+
+.task-checkbox:hover input ~ .checkmark {
+    border-color: var(--primary);
+}
+
+.task-checkbox input:checked ~ .checkmark {
+    background-color: var(--completed);
+    border-color: var(--completed);
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.task-checkbox input:checked ~ .checkmark:after {
+    display: block;
+}
+
+.task-checkbox .checkmark:after {
+    left: 7px;
+    top: 3px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.tasks-list li h4 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    flex: 1;
+}
+
+.tasks-list li.completed h4 {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+}
+
+.task-description {
+    margin: 8px 0 16px 0;
+    color: var(--text-secondary);
+    padding-left: 36px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.task-actions {
+    display: flex;
+    gap: 10px;
+    padding-left: 36px;
+}
+
+.edit-btn, .delete-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: var(--transition);
+}
+
+.edit-btn {
+    background-color: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+}
+
+.edit-btn:hover {
+    background-color: var(--primary-transparent);
+}
+
+.delete-btn {
+    background-color: transparent;
+    border: 1px solid #e57373;
+    color: #e57373;
+}
+
+.delete-btn:hover {
+    background-color: rgba(229, 115, 115, 0.1);
+}
+
+/* No Tasks State */
+.no-tasks {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--text-secondary);
+}
+
+.start-adding-btn {
+    background-color: var(--primary-transparent);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-top: 16px;
+    transition: var(--transition);
+}
+
+.start-adding-btn:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
+@media (max-width: 900px) {
     .calendar-page {
         flex-direction: column;
-        align-items: center;
+        height: auto;
     }
-    .calendar-container, .tasks-container {
-        max-width: 90%;
+    
+    .calendar-sidebar {
+        width: 100%;
+        max-width: none;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+    
+    .tasks-main {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 600px) {
+    .selected-date-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .task-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .edit-btn, .delete-btn {
+        width: 100%;
     }
 }
