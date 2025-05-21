@@ -1,4 +1,3 @@
-/* CalendarPurple.css */
 :root {
     --primary: #7e57c2;
     --primary-light: #9575cd;
@@ -12,6 +11,15 @@
     --border-color: #e0e0e0;
     --completed: #81c784;
     --completed-bg: rgba(129, 199, 132, 0.1);
+    
+    /* Due status colors */
+    --due-today: #ff9800;
+    --due-today-bg: rgba(255, 152, 0, 0.1);
+    --due-soon: #ffc107;
+    --due-soon-bg: rgba(255, 193, 7, 0.1);
+    --overdue: #f44336;
+    --overdue-bg: rgba(244, 67, 54, 0.1);
+    
     --shadow: 0 5px 15px rgba(126, 87, 194, 0.1);
     --shadow-hover: 0 8px 20px rgba(126, 87, 194, 0.2);
     --transition: all 0.3s ease;
@@ -160,10 +168,47 @@ body {
     border-radius: 50%;
 }
 
+/* Calendar tile indicators for due tasks */
+.react-calendar__tile.has-due-tasks::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    background-color: var(--due-soon);
+    border-radius: 50%;
+}
+
+.react-calendar__tile.has-overdue-tasks::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    background-color: var(--overdue);
+    border-radius: 50%;
+}
+
+.react-calendar__tile.has-due-today-tasks::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    background-color: var(--due-today);
+    border-radius: 50%;
+}
+
 /* Add Task Button */
 .add-task-button-container {
-    margin-top: auto;
-    padding-top: 20px;
+    margin-top: 16px;
+    padding-top: 0;
 }
 
 .add-task-button {
@@ -244,7 +289,9 @@ body {
 }
 
 .task-form input[type="text"],
-.task-form textarea {
+.task-form textarea,
+.task-form input[type="date"],
+.task-form input[type="time"] {
     width: 100%;
     padding: 12px;
     margin-bottom: 16px;
@@ -257,7 +304,9 @@ body {
 }
 
 .task-form input[type="text"]:focus,
-.task-form textarea:focus {
+.task-form textarea:focus,
+.task-form input[type="date"]:focus,
+.task-form input[type="time"]:focus {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 2px var(--primary-transparent);
@@ -266,6 +315,18 @@ body {
 .task-form textarea {
     min-height: 120px;
     resize: vertical;
+}
+
+/* Due date field styles */
+.task-due-date {
+    margin-bottom: 16px;
+}
+
+.task-due-date label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--text-primary);
 }
 
 .form-buttons {
@@ -328,6 +389,7 @@ body {
     box-shadow: var(--shadow);
     transition: var(--transition);
     border-left: 4px solid var(--primary);
+    position: relative;
 }
 
 .tasks-list li:hover {
@@ -338,6 +400,22 @@ body {
 .tasks-list li.completed {
     border-left-color: var(--completed);
     background-color: var(--completed-bg);
+}
+
+/* Due status styling for task cards */
+.tasks-list li.due-today {
+    border-left-color: var(--due-today);
+    background-color: var(--due-today-bg);
+}
+
+.tasks-list li.due-soon {
+    border-left-color: var(--due-soon);
+    background-color: var(--due-soon-bg);
+}
+
+.tasks-list li.overdue {
+    border-left-color: var(--overdue);
+    background-color: var(--overdue-bg);
 }
 
 .task-header {
@@ -428,6 +506,48 @@ body {
     line-height: 1.5;
 }
 
+/* Due date badge styles */
+.due-date-badge {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.due-date-badge.due-today {
+    background-color: var(--due-today);
+    color: white;
+}
+
+.due-date-badge.due-soon {
+    background-color: var(--due-soon);
+    color: #333;
+}
+
+.due-date-badge.overdue {
+    background-color: var(--overdue);
+    color: white;
+}
+
+.task-title-container {
+    flex: 1;
+}
+
+.task-title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.task-time {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
 .task-actions {
     display: flex;
     gap: 10px;
@@ -486,6 +606,47 @@ body {
     color: white;
 }
 
+/* Task timing options */
+.task-timing {
+    margin-bottom: 16px;
+}
+
+.timing-option {
+    margin-bottom: 12px;
+}
+
+.checkbox-container {
+    position: relative;
+    padding-left: 35px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    user-select: none;
+    display: inline-block;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.time-selection {
+    display: flex;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.time-input {
+    flex: 1;
+}
+
+.time-input label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.time-input input {
+    width: 100%;
+}
+
 @media (max-width: 900px) {
     .calendar-page {
         flex-direction: column;
@@ -520,3 +681,25 @@ body {
         width: 100%;
     }
 }
+
+.check-availability-button {
+    width: 100%;
+    background-color: transparent;
+    color: var(--primary-color, var(--primary));
+    border: 1px solid var(--primary-color, var(--primary));
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+    font-size: 1rem;
+    margin-top: 12px;
+}
+
+.check-availability-button:hover {
+    background-color: var(--primary-color, var(--primary));
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+

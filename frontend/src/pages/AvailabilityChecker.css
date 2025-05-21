@@ -1,0 +1,328 @@
+.availability-checker {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.availability-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.availability-modal-content {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1rem;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #4a6fa5;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #999;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.availability-checker h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.date-inputs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.date-input {
+  flex: 1;
+}
+
+.date-input label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.date-input input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.check-availability-btn {
+  background-color: #4a6fa5;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+
+.check-availability-btn:hover {
+  background-color: #3a5a8f;
+}
+
+.check-availability-btn:disabled {
+  background-color: #a0aec0;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: #e53e3e;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+/* Enhanced Availability legend styles */
+.availability-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.legend-color {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  margin-right: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.legend-available {
+  background-color: #68d391;
+}
+
+.legend-somewhat-busy {
+  background-color: #fbd38d;
+}
+
+.legend-busy {
+  background-color: #fc8181;
+}
+
+/* Enhanced Calendar availability indicator styles */
+.react-calendar .available {
+  background-color: rgba(104, 211, 145, 0.3) !important;
+  color: #22543d !important;
+  border: 2px solid #68d391 !important;
+}
+
+.react-calendar .somewhat-busy {
+  background-color: rgba(251, 211, 141, 0.3) !important;
+  color: #744210 !important;
+  border: 2px solid #fbd38d !important;
+}
+
+.react-calendar .busy {
+  background-color: rgba(252, 129, 129, 0.3) !important;
+  color: #822727 !important;
+  border: 2px solid #fc8181 !important;
+}
+
+/* Increased visibility for tile content indicators */
+.react-calendar .availability-indicator {
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+  margin: 3px auto 0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.react-calendar .availability-indicator.available {
+  background-color: #68d391;
+}
+
+.react-calendar .availability-indicator.somewhat-busy {
+  background-color: #fbd38d;
+}
+
+.react-calendar .availability-indicator.busy {
+  background-color: #fc8181;
+}
+
+/* Availability results styling */
+.availability-results {
+  margin-top: 2rem;
+}
+
+.availability-results h4 {
+  color: #4a6fa5;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.availability-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.availability-day {
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.availability-day:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.availability-day.available {
+  background-color: rgba(104, 211, 145, 0.1);
+  border-left: 4px solid #68d391;
+}
+
+.availability-day.somewhat-busy {
+  background-color: rgba(251, 211, 141, 0.1);
+  border-left: 4px solid #fbd38d;
+}
+
+.availability-day.busy {
+  background-color: rgba(252, 129, 129, 0.1);
+  border-left: 4px solid #fc8181;
+}
+
+.date-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-display {
+  font-weight: 600;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.available {
+  background-color: rgba(104, 211, 145, 0.2);
+  color: #22543d;
+}
+
+.status-badge.somewhat-busy {
+  background-color: rgba(251, 211, 141, 0.2);
+  color: #744210;
+}
+
+.status-badge.busy {
+  background-color: rgba(252, 129, 129, 0.2);
+  color: #822727;
+}
+
+.availability-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.task-count {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.add-task-btn {
+  background-color: #4a6fa5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-task-btn:hover {
+  background-color: #3a5a8f;
+}
+
+/* For mobile responsiveness */
+@media (max-width: 600px) {
+  .date-inputs {
+    flex-direction: column;
+  }
+  
+  .availability-day {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .availability-details {
+    width: 100%;
+    align-items: flex-start;
+  }
+  
+  .add-task-btn {
+    width: 100%;
+  }
+}
