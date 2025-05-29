@@ -1,9 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './Home.css';
 import { motion } from 'framer-motion';
 
-
 const Home = () => {
+    // State to track if user is logged in
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    
+    // Effect to check authentication status when component mounts
+    useEffect(() => {
+        // Here you would check your authentication state
+        // For example, checking if there's a token in localStorage or using your auth service
+        const checkAuthStatus = () => {
+            // This is just a placeholder - replace with your actual auth check logic
+            const token = localStorage.getItem('authToken');
+            setIsLoggedIn(!!token);
+        };
+        
+        checkAuthStatus();
+    }, []);
+
     return (
         <div className="home-container">
             <div className="hero-section">
@@ -17,26 +32,29 @@ const Home = () => {
                     <p className="tagline">
                         QuestMate helps you track tasks, collaborate with friends, and stay motivated on your journey to productivity.
                     </p>
-                    <div className="hero-buttons">
-                        <motion.button 
-                            className="primary-btn"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => window.location.href = '/signup'}
-                        >
-                            Get Started
-                        </motion.button>
-                        <motion.button 
-                            className="secondary-btn"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => window.location.href = '/login'}
-                        >
-                            Log In
-                        </motion.button>
-                    </div>
+                    
+                    {/* Render login/signup buttons only when not logged in */}
+                    {!isLoggedIn && (
+                        <div className="hero-buttons">
+                            <motion.button 
+                                className="primary-btn"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => window.location.href = '/signup'}
+                            >
+                                Get Started
+                            </motion.button>
+                            <motion.button 
+                                className="secondary-btn"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => window.location.href = '/login'}
+                            >
+                                Log In
+                            </motion.button>
+                        </div>
+                    )}
                 </motion.div>
-                
             </div>
 
             <motion.div 
@@ -93,14 +111,18 @@ const Home = () => {
             >
                 <h2>Ready to boost your productivity?</h2>
                 <p>Join thousands of users who have transformed their task management with QuestMate.</p>
-                <motion.button 
-                    className="primary-btn"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => window.location.href = '/signup'}
-                >
-                    Sign Up Free
-                </motion.button>
+                
+                {/* Show the Sign Up button only if not logged in */}
+                {!isLoggedIn && (
+                    <motion.button 
+                        className="primary-btn"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => window.location.href = '/signup'}
+                    >
+                        Sign Up Free
+                    </motion.button>
+                )}
             </motion.div>
         </div>
     );
