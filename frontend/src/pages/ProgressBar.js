@@ -41,7 +41,13 @@ const TaskProgressBar = ({ tasks }) => {
         <div className="progress-bar-bg">
           <div 
             className="progress-bar-fill"
-            style={{ width: `${taskStats.percentage}%` }}
+            style={{ 
+              width: `${taskStats.percentage}%`,
+              backgroundColor: taskStats.percentage === 100 
+                ? '#4caf50'            // Green for done
+                : 'var(--primary-color)' // Theme's primary for loading
+            }}
+                      
           ></div>
         </div>
       </div>

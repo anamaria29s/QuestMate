@@ -12,14 +12,15 @@ from django.contrib.auth import authenticate
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import UserProfile, Friendship, FriendRequest, Task, SharedTask, SharedCalendar, Membership, UserAchievement, Achievement, UserStats, CalendarStats
-from .serializers import   UserProfileUpdateSerializer, TaskSerializer, SharedCalendarSerializer, SharedTaskSerializer, MembershipSerializer, AchievementSerializer, UserAchievementSerializer, UserStatsSerializer, CalendarStatsSerializer, LeaderboardSerializer
+from .models import UserProfile, Friendship, FriendRequest, Task, SharedTask, SharedCalendar, Membership, UserAchievement, Achievement, UserStats, CalendarStats, TaskCategory, SharedTaskCategory
+from .serializers import   UserProfileUpdateSerializer, TaskSerializer, SharedCalendarSerializer, SharedTaskSerializer, MembershipSerializer, AchievementSerializer, UserAchievementSerializer, UserStatsSerializer, CalendarStatsSerializer, LeaderboardSerializer, TaskCategorySerializer, SharedTaskCategorySerializer
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from django.utils.timezone import now
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Count, Q
 
 def index(request):
     return render(request, 'tasks/index.html')
@@ -287,6 +288,7 @@ def get_tasks(request):
     serializer = TaskSerializer(tasks, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])  
 @permission_classes([IsAuthenticated])
@@ -296,6 +298,41 @@ def add_task(request):
 
     task_data = request.data
     task_data['user'] = request.user.id  
+
+    is_all_day = task_data.get('is_all_day', True)
+    if is_all_day == 'false' or is_all_day == False:
+        task_data['is_all_day'] = False
+        
+        start_time = task_data.get('start_time')
+        end_time = task_data.get('end_time')
+        
+        if not start_time or not end_time:
+            return Response({
+                'error': 'Start time and end time are required for non-all-day tasks.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        task_data['is_all_day'] = True
+        task_data['start_time'] = None
+        task_data['end_time'] = None
+        
+    # Handle priority validation
+    priority = task_data.get('priority', 'medium')
+    valid_priorities = ['low', 'medium', 'high']
+    if priority not in valid_priorities:
+        return Response({
+            'error': f'Invalid priority. Must be one of: {", ".join(valid_priorities)}'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Handle category
+    category_id = task_data.get('category')
+    if category_id:
+        try:
+            # Verify category belongs to the user
+            category = TaskCategory.objects.get(id=category_id, user=request.user)
+        except TaskCategory.DoesNotExist:
+            return Response({
+                'error': 'Category not found or you do not have permission to use this category.'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
     serializer = TaskSerializer(data=task_data)
     if serializer.is_valid():
@@ -311,12 +348,58 @@ def edit_task(request, task_id):
     try:
         task = Task.objects.get(id=task_id, user=request.user)
     except Task.DoesNotExist:
-        return Response({'error': 'Task not found or you do not have permission to edit this task.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'Task not found or you do not have permission to edit this task.'}, 
+                       status=status.HTTP_404_NOT_FOUND)
 
     task_data = request.data
+    is_all_day = task_data.get('is_all_day', task.is_all_day)
+    
+    if is_all_day == 'false' or is_all_day == False:
+        task.is_all_day = False
+        
+        start_time = task_data.get('start_time')
+        end_time = task_data.get('end_time')
+        
+        if not start_time or not end_time:
+            return Response({
+                'error': 'Start time and end time are required for non-all-day tasks.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        task.start_time = start_time
+        task.end_time = end_time
+    else:
+        task.is_all_day = True
+        task.start_time = None
+        task.end_time = None
+
     task.title = task_data.get('title', task.title)
     task.description = task_data.get('description', task.description)
     task.date = task_data.get('date', task.date)
+    
+    # Handle priority update
+    priority = task_data.get('priority')
+    if priority is not None:
+        valid_priorities = ['low', 'medium', 'high']
+        if priority not in valid_priorities:
+            return Response({
+                'error': f'Invalid priority. Must be one of: {", ".join(valid_priorities)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        task.priority = priority
+    
+
+    # Handle category update
+    category_id = task_data.get('category')
+    if category_id is not None:
+        if category_id == "":  # Remove category
+            task.category = None
+        else:
+            try:
+                category = TaskCategory.objects.get(id=category_id, user=request.user)
+                task.category = category
+            except TaskCategory.DoesNotExist:
+                return Response({
+                    'error': 'Category not found or you do not have permission to use this category.'
+                }, status=status.HTTP_400_BAD_REQUEST)
 
     task.save()
 
@@ -397,7 +480,119 @@ def create_shared_calendar(request):
 
     return Response(SharedCalendarSerializer(calendar).data, status=status.HTTP_201_CREATED)
 
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def shared_calendar_detail(request, calendar_id):
 
+    try:
+        calendar = SharedCalendar.objects.get(id=calendar_id)
+        
+        is_owner = calendar.owner == request.user
+        is_member = Membership.objects.filter(
+            calendar=calendar,
+            receiver=request.user,
+            status='accepted'
+        ).exists()
+        
+        if not (is_owner or is_member):
+            return Response({'detail': 'You do not have access to this calendar.'}, status=403)
+        
+        serializer = SharedCalendarSerializer(calendar)
+        calendar_data = serializer.data
+        
+        calendar_data['is_owner'] = is_owner
+        calendar_data['member_count'] = calendar.memberships.filter(status='accepted').count() + 1  
+        
+        return Response(calendar_data)
+        
+    except SharedCalendar.DoesNotExist:
+        return Response({'detail': 'Calendar not found.'}, status=404)
+    except Exception as e:
+        print(f"Error in shared_calendar_detail: {e}")
+        return Response({'detail': 'An error occurred while fetching calendar details.'}, status=500)
+    
+@api_view(['DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_shared_calendar(request, calendar_id):
+    try:
+        calendar = get_object_or_404(SharedCalendar, id=calendar_id)
+        
+        if calendar.owner != request.user:
+            return Response({
+                'detail': 'Only the calendar owner can delete this calendar.'
+            }, status=403)
+        
+        calendar_name = calendar.name
+        
+        with transaction.atomic():
+            SharedTask.objects.filter(calendar=calendar).delete()
+            
+            Membership.objects.filter(calendar=calendar).delete()
+            
+            SharedTaskCategory.objects.filter(calendar=calendar).delete()
+            
+            calendar.delete()
+        
+        return Response({
+            'detail': f'Calendar "{calendar_name}" has been successfully deleted.',
+            'success': True
+        }, status=200)
+        
+    except SharedCalendar.DoesNotExist:
+        return Response({
+            'detail': 'Calendar not found.'
+        }, status=404)
+    except Exception as e:
+        print(f"Error deleting shared calendar: {e}")
+        return Response({
+            'detail': 'An error occurred while deleting the calendar.',
+            'success': False
+        }, status=500)
+
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def leave_shared_calendar(request, calendar_id):
+    try:
+        calendar = get_object_or_404(SharedCalendar, id=calendar_id)
+        
+        if calendar.owner == request.user:
+            return Response({
+                'detail': 'Calendar owners cannot leave their own calendar. Delete the calendar instead.'
+            }, status=400)
+        
+        try:
+            membership = Membership.objects.get(
+                calendar=calendar,
+                receiver=request.user,
+                status='accepted'
+            )
+            membership.delete()
+            
+            return Response({
+                'detail': f'You have successfully left "{calendar.name}".',
+                'success': True
+            }, status=200)
+            
+        except Membership.DoesNotExist:
+            return Response({
+                'detail': 'You are not a member of this calendar.'
+            }, status=400)
+        
+    except SharedCalendar.DoesNotExist:
+        return Response({
+            'detail': 'Calendar not found.'
+        }, status=404)
+    except Exception as e:
+        print(f"Error leaving shared calendar: {e}")
+        return Response({
+            'detail': 'An error occurred while leaving the calendar.',
+            'success': False
+        }, status=500)
+    
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -499,37 +694,86 @@ def list_calendar_invites(request):
     ]
 
     return Response(data, status=status.HTTP_200_OK)
-
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def add_shared_task(request, calendar_id):
     if not request.user.is_authenticated:
-        return Response({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({'detail': 'Authentication credentials were not provided.'}, 
+                       status=status.HTTP_401_UNAUTHORIZED)
 
     title = request.data.get('title')
     description = request.data.get('description', '')
     date = request.data.get('date')
+    is_all_day = request.data.get('is_all_day', True)
+    start_time = None
+    end_time = None
+    category_id = request.data.get('category')
+    priority = request.data.get('priority', 'medium')
 
     if not title or not date:
-        return Response({'detail': 'Missing required fields: title or date.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': 'Missing required fields: title or date.'}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    # Handle priority validation
+    valid_priorities = ['low', 'medium', 'high']
+    if priority not in valid_priorities:
+        return Response({
+            'error': f'Invalid priority. Must be one of: {", ".join(valid_priorities)}'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if is_all_day == 'false' or is_all_day is False:
+        is_all_day = False
+        start_time = request.data.get('start_time')
+        end_time = request.data.get('end_time')
+        
+        if not start_time or not end_time:
+            return Response({
+                'error': 'Start time and end time are required for non-all-day tasks.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        is_all_day = True
 
     try:
         shared_calendar = SharedCalendar.objects.get(id=calendar_id)
+        # Check if user has access to this calendar
+        if shared_calendar.owner != request.user and not shared_calendar.memberships.filter(
+                receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You do not have permission to add tasks to this calendar.'}, 
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        # Check category if provided
+        category = None
+        if category_id:
+            try:
+                category = SharedTaskCategory.objects.get(id=category_id, calendar=shared_calendar)
+            except SharedTaskCategory.DoesNotExist:
+                return Response({
+                    'error': 'Category not found or does not belong to this calendar.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        shared_task = SharedTask(
+            calendar=shared_calendar,
+            title=title,
+            description=description,
+            date=date,
+            created_by=request.user,  # ADD THIS LINE
+            is_all_day=is_all_day,
+            start_time=start_time,
+            end_time=end_time,
+            completed=False,
+            category=category,
+            priority=priority
+        )
+        shared_task.save()
+        print(f"After save, created_by: {shared_task.created_by}")
+
+        serializer = SharedTaskSerializer(shared_task)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
     except SharedCalendar.DoesNotExist:
         return Response({'detail': 'Shared calendar not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    shared_task = SharedTask(
-        calendar=shared_calendar,
-        title=title,
-        description=description,
-        date=date,
-        completed=False
-    )
-    shared_task.save()
-
-    serializer = SharedTaskSerializer(shared_task)
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
 @api_view(['PUT'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -537,12 +781,60 @@ def edit_shared_task(request, calendar_id, shared_task_id):
     try:
         shared_task = SharedTask.objects.get(id=shared_task_id)
 
-        if shared_task.calendar.owner != request.user and not shared_task.calendar.memberships.filter(receiver=request.user, status='accepted').exists():
-            return Response({'error': 'You are neither the owner nor a member of this shared calendar.'}, status=status.HTTP_403_FORBIDDEN)
+        if shared_task.calendar.owner != request.user and not shared_task.calendar.memberships.filter(
+                receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You are neither the owner nor a member of this shared calendar.'}, 
+                           status=status.HTTP_403_FORBIDDEN)
 
         shared_task.title = request.data.get('title', shared_task.title)
         shared_task.description = request.data.get('description', shared_task.description)
         shared_task.date = request.data.get('date', shared_task.date)
+
+        # Handle priority update
+        priority = request.data.get('priority')
+        if priority is not None:
+            valid_priorities = ['low', 'medium', 'high']
+            if priority not in valid_priorities:
+                return Response({
+                    'error': f'Invalid priority. Must be one of: {", ".join(valid_priorities)}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            shared_task.priority = priority
+        
+        is_all_day = request.data.get('is_all_day', shared_task.is_all_day)
+        if is_all_day == 'false' or is_all_day is False:
+            shared_task.is_all_day = False
+            
+            start_time = request.data.get('start_time')
+            end_time = request.data.get('end_time')
+            
+            if not start_time or not end_time:
+                return Response({
+                    'error': 'Start time and end time are required for non-all-day tasks.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+            shared_task.start_time = start_time
+            shared_task.end_time = end_time
+        else:
+            shared_task.is_all_day = True
+            shared_task.start_time = None
+            shared_task.end_time = None
+            
+        
+        # Handle category update
+        category_id = request.data.get('category')
+        if category_id is not None:
+            if category_id == "":  # Remove category
+                shared_task.category = None
+            else:
+                try:
+                    category = SharedTaskCategory.objects.get(id=category_id, calendar=shared_task.calendar)
+                    shared_task.category = category
+                except SharedTaskCategory.DoesNotExist:
+                    return Response({
+                        'error': 'Category not found or does not belong to this calendar.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+        # NOTE: We don't update created_by during editing - it should remain the original creator
 
         shared_task.save()
 
@@ -551,7 +843,7 @@ def edit_shared_task(request, calendar_id, shared_task_id):
 
     except SharedTask.DoesNotExist:
         return Response({'error': 'Shared task not found.'}, status=status.HTTP_404_NOT_FOUND)
-
+    
 @api_view(['DELETE'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -561,6 +853,11 @@ def delete_shared_task(request, calendar_id, shared_task_id):
 
         if shared_task.calendar.owner != request.user and not shared_task.calendar.memberships.filter(receiver=request.user, status='accepted').exists():
             return Response({'error': 'You are neither the owner nor a member of this shared calendar.'}, status=status.HTTP_403_FORBIDDEN)
+
+
+        if shared_task.completed:
+            from .service import decrement_task_completion_stats
+            decrement_task_completion_stats(request.user, shared_task.calendar)
 
         shared_task.delete()
         return Response({'message': 'Shared task deleted successfully.'}, status=status.HTTP_200_OK)
@@ -584,8 +881,13 @@ def toggle_shared_task_completion(request, calendar_id, shared_task_id):
         shared_task.save()
         
         if not was_completed and shared_task.completed:
+            # Task marked as complete - increment stats
             from .service import update_task_completion_stats
             update_task_completion_stats(request.user, calendar)
+        elif was_completed and not shared_task.completed:
+            # Task unmarked (went from complete to incomplete) - decrement stats
+            from .service import decrement_task_completion_stats
+            decrement_task_completion_stats(request.user, calendar)
 
         serializer = SharedTaskSerializer(shared_task)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -688,3 +990,365 @@ def get_available_achievements(request):
     achievements = Achievement.objects.all()
     serializer = AchievementSerializer(achievements, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET', 'POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def task_category_list(request):
+    if request.method == 'GET':
+        categories = TaskCategory.objects.filter(user=request.user)
+        serializer = TaskCategorySerializer(categories, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = TaskCategorySerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_task_category(request):
+    serializer = TaskSerializer(data=request.data, context={'request': request})
+    if serializer.is_valid():
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PUT'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def update_task_category(request, category_id):
+    try:
+        category = TaskCategory.objects.get(id=category_id, user=request.user)
+    except TaskCategory.DoesNotExist:
+        return Response({'error': 'Category not found or you do not have permission.'}, 
+                        status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = TaskCategorySerializer(
+        category, 
+        data=request.data, 
+        partial=True,
+        context={'request': request} 
+    )
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_task_category(request, category_id):
+    try:
+        category = TaskCategory.objects.get(id=category_id, user=request.user)
+        category.delete()
+        return Response({'message': 'Category deleted successfully.'}, status=status.HTTP_200_OK)
+    except TaskCategory.DoesNotExist:
+        return Response({'error': 'Category not found or you do not have permission.'}, 
+                        status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_shared_task_categories(request, calendar_id):
+    try:
+        calendar = SharedCalendar.objects.get(id=calendar_id)
+        if calendar.owner != request.user and not calendar.memberships.filter(
+                receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You do not have access to this calendar.'}, 
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        categories = SharedTaskCategory.objects.filter(calendar=calendar)
+        serializer = SharedTaskCategorySerializer(categories, many=True)  # Fixed serializer name
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except SharedCalendar.DoesNotExist:
+        return Response({'error': 'Calendar not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_shared_task_category(request, calendar_id):
+    try:
+        calendar = SharedCalendar.objects.get(id=calendar_id)
+        if calendar.owner != request.user and not calendar.memberships.filter(
+                receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You do not have permission to create categories for this calendar.'}, 
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = SharedTaskCategorySerializer(data=request.data)  # Fixed serializer name
+        if serializer.is_valid():
+            serializer.save(calendar=calendar)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            # Add debugging information
+            print("Serializer errors:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except SharedCalendar.DoesNotExist:
+        return Response({'error': 'Calendar not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['PUT'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def update_shared_task_category(request, calendar_id, category_id):
+    try:
+        calendar = SharedCalendar.objects.get(id=calendar_id)
+        if calendar.owner != request.user and not calendar.memberships.filter(
+                receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You do not have permission to update categories for this calendar.'}, 
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        category = SharedTaskCategory.objects.get(id=category_id, calendar=calendar)
+        serializer = SharedTaskCategorySerializer(category, data=request.data, partial=True)  # Fixed serializer name
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            # Add debugging information
+            print("Serializer errors:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except SharedCalendar.DoesNotExist:
+        return Response({'error': 'Calendar not found.'}, status=status.HTTP_404_NOT_FOUND)
+    except SharedTaskCategory.DoesNotExist:
+        return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_shared_task_category(request, calendar_id, category_id):
+    try:
+        calendar = SharedCalendar.objects.get(id=calendar_id)
+        if calendar.owner != request.user and not calendar.memberships.filter(
+                receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You do not have permission to delete categories for this calendar.'},
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        category = SharedTaskCategory.objects.get(id=category_id, calendar=calendar)
+        category.delete()
+        return Response({'message': 'Category deleted successfully.'}, status=status.HTTP_200_OK)
+    except SharedCalendar.DoesNotExist:
+        return Response({'error': 'Calendar not found.'}, status=status.HTTP_404_NOT_FOUND)
+    except SharedTaskCategory.DoesNotExist:
+        return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
+    
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_tasks_by_priority(request, priority_level):
+    valid_priorities = ['low', 'medium', 'high']
+    if priority_level not in valid_priorities:
+        return Response({
+            'error': f'Invalid priority level. Must be one of: {", ".join(valid_priorities)}'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Get sort order parameter (default: ascending)
+    sort_order = request.GET.get('sort', 'asc').lower()
+    if sort_order not in ['asc', 'desc']:
+        return Response({
+            'error': 'Invalid sort order. Must be "asc" or "desc"'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    tasks = Task.objects.filter(user=request.user, priority=priority_level)
+    
+    # Apply sorting based on sort_order
+    if sort_order == 'desc':
+        tasks = tasks.order_by('-date', '-start_time')
+    else:
+        tasks = tasks.order_by('date', 'start_time')
+    
+    serializer = TaskSerializer(tasks, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_tasks_sorted_by_priority(request):
+    # Get priority sort order parameter
+    priority_sort = request.GET.get('priority_sort', 'high_first').lower()
+    valid_priority_sorts = ['high_first', 'low_first']
+    
+    if priority_sort not in valid_priority_sorts:
+        return Response({
+            'error': f'Invalid priority sort. Must be one of: {", ".join(valid_priority_sorts)}'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Get date sort order parameter
+    date_sort = request.GET.get('date_sort', 'asc').lower()
+    if date_sort not in ['asc', 'desc']:
+        return Response({
+            'error': 'Invalid date sort order. Must be "asc" or "desc"'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Define priority ordering based on preference
+    if priority_sort == 'high_first':
+        priority_case = "CASE WHEN priority='high' THEN 1 WHEN priority='medium' THEN 2 WHEN priority='low' THEN 3 END"
+    else:  # low_first
+        priority_case = "CASE WHEN priority='low' THEN 1 WHEN priority='medium' THEN 2 WHEN priority='high' THEN 3 END"
+    
+    tasks = Task.objects.filter(user=request.user).extra(
+        select={'priority_order': priority_case}
+    )
+    
+    # Apply date sorting
+    if date_sort == 'desc':
+        tasks = tasks.order_by('priority_order', '-date', '-start_time')
+    else:
+        tasks = tasks.order_by('priority_order', 'date', 'start_time')
+    
+    serializer = TaskSerializer(tasks, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_shared_tasks_by_priority(request, calendar_id, priority_level):
+    valid_priorities = ['low', 'medium', 'high']
+    if priority_level not in valid_priorities:
+        return Response({
+            'error': f'Invalid priority level. Must be one of: {", ".join(valid_priorities)}'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Get sort order parameter (default: ascending)
+    sort_order = request.GET.get('sort', 'asc').lower()
+    if sort_order not in ['asc', 'desc']:
+        return Response({
+            'error': 'Invalid sort order. Must be "asc" or "desc"'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        shared_calendar = SharedCalendar.objects.get(id=calendar_id)
+        # Check access permissions
+        if shared_calendar.owner != request.user and not shared_calendar.memberships.filter(
+                receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You do not have permission to view tasks in this calendar.'}, 
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        shared_tasks = SharedTask.objects.filter(
+            calendar=shared_calendar, 
+            priority=priority_level
+        )
+        
+        # Apply sorting based on sort_order
+        if sort_order == 'desc':
+            shared_tasks = shared_tasks.order_by('-date', '-start_time')
+        else:
+            shared_tasks = shared_tasks.order_by('date', 'start_time')
+        
+        serializer = SharedTaskSerializer(shared_tasks, many=True)
+        return Response(serializer.data)
+        
+    except SharedCalendar.DoesNotExist:
+        return Response({'error': 'Shared calendar not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_shared_tasks_sorted_by_priority(request, calendar_id):
+    # Get priority sort order parameter
+    priority_sort = request.GET.get('priority_sort', 'high_first').lower()
+    valid_priority_sorts = ['high_first', 'low_first']
+    
+    if priority_sort not in valid_priority_sorts:
+        return Response({
+            'error': f'Invalid priority sort. Must be one of: {", ".join(valid_priority_sorts)}'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Get date sort order parameter
+    date_sort = request.GET.get('date_sort', 'asc').lower()
+    if date_sort not in ['asc', 'desc']:
+        return Response({
+            'error': 'Invalid date sort order. Must be "asc" or "desc"'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        shared_calendar = SharedCalendar.objects.get(id=calendar_id)
+        # Check access permissions
+        if shared_calendar.owner != request.user and not shared_calendar.memberships.filter(
+                receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You do not have permission to view tasks in this calendar.'}, 
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        # Define priority ordering based on preference
+        if priority_sort == 'high_first':
+            priority_case = "CASE WHEN priority='high' THEN 1 WHEN priority='medium' THEN 2 WHEN priority='low' THEN 3 END"
+        else:  # low_first
+            priority_case = "CASE WHEN priority='low' THEN 1 WHEN priority='medium' THEN 2 WHEN priority='high' THEN 3 END"
+        
+        shared_tasks = SharedTask.objects.filter(calendar=shared_calendar).extra(
+            select={'priority_order': priority_case}
+        )
+        
+        # Apply date sorting
+        if date_sort == 'desc':
+            shared_tasks = shared_tasks.order_by('priority_order', '-date', '-start_time')
+        else:
+            shared_tasks = shared_tasks.order_by('priority_order', 'date', 'start_time')
+        
+        serializer = SharedTaskSerializer(shared_tasks, many=True)
+        return Response(serializer.data)
+        
+    except SharedCalendar.DoesNotExist:
+        return Response({'error': 'Shared calendar not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_priority_stats(request):
+    # Get sort order for priority stats
+    sort_order = request.GET.get('sort', 'asc').lower()
+    if sort_order not in ['asc', 'desc']:
+        return Response({
+            'error': 'Invalid sort order. Must be "asc" or "desc"'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    stats_query = Task.objects.filter(user=request.user).values('priority').annotate(
+        total=Count('id'),
+        completed=Count('id', filter=Q(completed=True)),
+        pending=Count('id', filter=Q(completed=False))
+    )
+    
+    if sort_order == 'desc':
+        stats = stats_query.order_by('-priority')
+    else:
+        stats = stats_query.order_by('priority')
+    
+    return Response(list(stats))
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_shared_priority_stats(request, calendar_id):
+    # Get sort order for priority stats
+    sort_order = request.GET.get('sort', 'asc').lower()
+    if sort_order not in ['asc', 'desc']:
+        return Response({
+            'error': 'Invalid sort order. Must be "asc" or "desc"'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        shared_calendar = SharedCalendar.objects.get(id=calendar_id)
+        # Check access permissions
+        if shared_calendar.owner != request.user and not shared_calendar.memberships.filter(
+                receiver=request.user, status='accepted').exists():
+            return Response({'error': 'You do not have permission to view statistics for this calendar.'}, 
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        stats_query = SharedTask.objects.filter(calendar=shared_calendar).values('priority').annotate(
+            total=Count('id'),
+            completed=Count('id', filter=Q(completed=True)),
+            pending=Count('id', filter=Q(completed=False))
+        )
+        
+        if sort_order == 'desc':
+            stats = stats_query.order_by('-priority')
+        else:
+            stats = stats_query.order_by('priority')
+        
+        return Response(list(stats))
+        
+    except SharedCalendar.DoesNotExist:
+        return Response({'error': 'Shared calendar not found.'}, status=status.HTTP_404_NOT_FOUND)

@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import Calendar from 'react-calendar';
-import 'react-calendar/dist/Calendar.css';
 import './SharedCalendarPage.css'; 
 import Leaderboard from './Leaderboard'; 
+import SharedTaskCategory from './SharedTaskCategory'; 
 import { useNotifications } from './NotificationContext';
 import { 
-  fetchSharedTasks, 
   toggleSharedTaskCompletion, 
   checkNewAchievements 
 } from '../ApiService';
@@ -19,19 +18,21 @@ const themes = {
     secondary: '#f0e6fa',       // Light purple background
     accent: '#a64dff',          // Lighter purple for accent
     text: '#333333',
+    secondtext: '#333333',
     calendarBackground: '#ffffff',
     taskBackground: '#f8f5ff',  // Very light purple background
     completedTask: '#e8e0f7'    // Light purple for completed tasks
   },
   dark: {
     name: 'Dark Mode',
-    primary: '#2c3e50',
-    secondary: '#34495e',
-    accent: '#1abc9c',
-    text: '#ffffff',          // Brighter white text for better contrast
-    calendarBackground: '#2c3e50',
-    taskBackground: '#34495e',
-    completedTask: '#2c3e50'
+    primary: '#10b981',        // Green primary
+    secondary: '#059669',      // Darker green secondary  
+    accent: '#34d399',         // Light green accent
+    text: '#ffffff',           // White text
+    secondtext: '#d1d5db',     // Light gray secondary text
+    calendarBackground: '#111827',  // Very dark background
+    taskBackground: '#1f2937',      // Dark gray for task cards
+    completedTask: '#065f46'  
   },
   pastel: {
     name: 'Pastel',
@@ -39,6 +40,7 @@ const themes = {
     secondary: '#f0e6fa',
     accent: '#87ceeb',
     text: '#5d4037',
+    secondtext: '#5d4037',
     calendarBackground: '#fff8e1',
     taskBackground: '#f5f5f5',
     completedTask: '#e0f7fa'
@@ -49,6 +51,7 @@ const themes = {
     secondary: '#fff3e0',       // Light orange background
     accent: '#ff8a65',          // Lighter orange for accent elements
     text: '#212121',
+    secondtext: '#212121',
     calendarBackground: '#ffffff',
     taskBackground: '#fff8e6',   // Very light orange background
     completedTask: '#ffecb3'     // Light orange for completed tasks
@@ -59,6 +62,7 @@ const themes = {
     secondary: '#e8eaf6',       // Light blue-gray background
     accent: '#3949ab',          // Medium blue for accent elements
     text: '#212121',            // Dark text for better readability
+    secondtext: '#212121',
     calendarBackground: '#ffffff', // White background for calendar
     taskBackground: '#e8eaf6',   // Light blue-gray for tasks
     completedTask: '#d1d9ff'     // Light blue for completed tasks
@@ -77,11 +81,28 @@ const SharedCalendarPage = () => {
     const [showLeaderboard, setShowLeaderboard] = useState(false);
     const [showThemeSelector, setShowThemeSelector] = useState(false);
     const [currentTheme, setCurrentTheme] = useState('default');
+    const [dateTasksMap, setDateTasksMap] = useState({});
     const { addNotification } = useNotifications();
-    // New state for task timing
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+    
+    // Calendar info state
+    const [calendarInfo, setCalendarInfo] = useState(null);
+    
+    // Task timing state
     const [isAllDay, setIsAllDay] = useState(true);
     const [startTime, setStartTime] = useState('09:00');
     const [endTime, setEndTime] = useState('10:00');
+    
+    // Category state
+    const [categories, setCategories] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState(null);
+    
+    // Priority state
+    const [taskPriority, setTaskPriority] = useState('medium');
+    const [priorityFilter, setPriorityFilter] = useState(null);
+    const [prioritySort, setPrioritySort] = useState('high_first');
+    const [dateSort, setDateSort] = useState('asc');
 
     useEffect(() => {
         const savedTheme = localStorage.getItem(`calendar_theme_${calendarId}`);
@@ -90,26 +111,182 @@ const SharedCalendarPage = () => {
         }
     }, [calendarId]);
 
-    const loadTasks = useCallback(async (date) => {
+    const formatLocalDate = (date) => {
+        // Ensure we're working with a Date object
+        const localDate = new Date(date);
+        
+        // Get the local date components to avoid timezone issues
+        const year = localDate.getFullYear();
+        const month = String(localDate.getMonth() + 1).padStart(2, '0');
+        const day = String(localDate.getDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`;
+    };
+
+    // Load calendar info
+    const loadCalendarInfo = useCallback(async () => {
         try {
-            const data = await fetchSharedTasks(calendarId, date);
-            setTasks(data);
+            const response = await axios.get(`http://127.0.0.1:8000/api/shared-calendars/${calendarId}/`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
+            });
+            setCalendarInfo(response.data);
         } catch (error) {
-            console.error("Error fetching tasks:", error);
+            console.error("Error fetching calendar info:", error);
         }
     }, [calendarId]);
+
+    // Load categories
+    const loadCategories = useCallback(async () => {
+        try {
+            const response = await axios.get(`http://127.0.0.1:8000/api/shared-calendars/${calendarId}/categories/`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
+            });
+            setCategories(response.data);
+        } catch (error) {
+            console.error("Error fetching categories:", error);
+        }
+    }, [calendarId]);
+
+    const loadTasks = useCallback(async (date) => {
+        try {
+            const formattedDate = formatLocalDate(date);
+            console.log("Loading shared tasks for formatted date:", formattedDate);
+            
+            const token = localStorage.getItem('access');
+            if (!token) {
+                console.error("No access token found");
+                return;
+            }
+
+            // Use the specific date endpoint to get tasks for the selected date only
+            const response = await axios.get(`http://127.0.0.1:8000/api/shared-tasks/${calendarId}/`, {
+                params: { 
+                    date: formattedDate,
+                    priority_sort: prioritySort !== 'date_only' ? prioritySort : undefined,
+                    date_sort: dateSort
+                },
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            console.log("Raw response data:", response.data);
+            
+            // Filter tasks to only show those for the selected date
+            let filteredTasks = response.data.filter(task => {
+                const taskDate = task.date;
+                console.log(`Comparing task date ${taskDate} with selected date ${formattedDate}`);
+                return taskDate === formattedDate;
+            });
+            
+            // Apply priority filter if set
+            if (priorityFilter) {
+                filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
+            }
+            
+            console.log("Filtered tasks for date:", filteredTasks);
+            setTasks(filteredTasks);
+            
+        } catch (error) {
+            console.error("Error fetching shared tasks:", error);
+            // Try the sorted endpoint if available
+            try {
+                const response = await axios.get(`http://127.0.0.1:8000/api/shared-tasks/${calendarId}/sorted/`, {
+                    params: { 
+                        date: formatLocalDate(date),
+                        priority_sort: prioritySort,
+                        date_sort: dateSort
+                    },
+                    headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
+                });
+                
+                let filteredTasks = response.data.filter(task => task.date === formatLocalDate(date));
+                if (priorityFilter) {
+                    filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
+                }
+                setTasks(filteredTasks);
+            } catch (fallbackError) {
+                console.error("Fallback error:", fallbackError);
+                setTasks([]); // Set empty array if both requests fail
+            }
+        }
+    }, [calendarId, priorityFilter, prioritySort, dateSort]);
+
+    // Load month tasks for calendar view
+    useEffect(() => {
+        const fetchMonthTasks = async () => {
+            try {
+                const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+                const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+                
+                const response = await axios.get(`http://127.0.0.1:8000/api/shared-tasks/${calendarId}/`, {
+                    params: {
+                        start_date: formatLocalDate(firstDay),
+                        end_date: formatLocalDate(lastDay)
+                    },
+                    headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
+                });
+                
+                // Organize tasks by date
+                const tasksByDate = {};
+                response.data.forEach(task => {
+                    const dateKey = task.date; // Use backend date as-is
+                    
+                    if (!tasksByDate[dateKey]) {
+                        tasksByDate[dateKey] = [];
+                    }
+                    tasksByDate[dateKey].push(task);
+                });
+                
+                setDateTasksMap(tasksByDate);
+            } catch (error) {
+                console.error("Error fetching shared month tasks:", error);
+            }
+        };
+        
+        fetchMonthTasks();
+    }, [currentMonth, calendarId]);
 
     useEffect(() => {
         if (calendarId) {
             loadTasks(selectedDate);
+            loadCategories();
+            loadCalendarInfo();
         }
-    }, [calendarId, selectedDate, loadTasks]);
+    }, [calendarId, selectedDate, loadTasks, loadCategories, loadCalendarInfo]);
+
+    // Reload tasks when priority sort or date sort changes
+    useEffect(() => {
+        if (calendarId && selectedDate) {
+            loadTasks(selectedDate);
+        }
+    }, [prioritySort, dateSort, priorityFilter]);
+
+    const refreshLeaderboard = useCallback(() => {
+        setRefreshTrigger(prev => prev + 1);
+    }, []);
+
+    const getFilteredTasks = () => {
+        let filtered = tasks;
+        
+        // Filter by category
+        if (categoryFilter !== null) {
+            filtered = filtered.filter(task => String(task.category) === String(categoryFilter));
+        }
+        
+        // Priority filter is already applied in loadTasks, but keep this for extra safety
+        if (priorityFilter !== null) {
+            filtered = filtered.filter(task => task.priority === priorityFilter);
+        }
+        
+        return filtered;
+    };
 
     const handleDateChange = (newDate) => {
+        console.log("Date changed to:", newDate);
         setSelectedDate(newDate);
         setIsAdding(false);
         setEditingTask(null);
         resetTaskForm();
+        // loadTasks will be called automatically due to useEffect dependency
     };
 
     const resetTaskForm = () => {
@@ -118,6 +295,8 @@ const SharedCalendarPage = () => {
         setIsAllDay(true);
         setStartTime('09:00');
         setEndTime('10:00');
+        setSelectedCategory('');
+        setTaskPriority('medium');
     };
 
     const changeMonth = (increment) => {
@@ -130,11 +309,15 @@ const SharedCalendarPage = () => {
         if (!taskTitle.trim()) return;
         
         try {
+            const formattedDate = formatLocalDate(selectedDate);
+            
             const taskData = {
-                date: selectedDate.toISOString().split('T')[0],
+                date: formattedDate,
                 title: taskTitle,
                 description: taskDescription,
                 is_all_day: isAllDay,
+                category: selectedCategory || null,
+                priority: taskPriority,
             };
 
             if (!isAllDay) {
@@ -156,8 +339,9 @@ const SharedCalendarPage = () => {
             setEditingTask(null);
             setIsAdding(false);
             loadTasks(selectedDate);
+            loadCategories(); // Refresh categories in case new ones were added
         } catch (error) {
-            console.error("Error saving task:", error);
+            console.error("Error saving shared task:", error);
         }
     };
 
@@ -165,10 +349,12 @@ const SharedCalendarPage = () => {
         setEditingTask(task);
         setTaskTitle(task.title);
         setTaskDescription(task.description);
+        setSelectedCategory(task.category || '');
+        setTaskPriority(task.priority || 'medium');
         
         setIsAllDay(task.is_all_day);
         if (!task.is_all_day && task.start_time && task.end_time) {
-            setStartTime(task.start_time.substring(0, 5)); // Format HH:MM
+            setStartTime(task.start_time.substring(0, 5)); 
             setEndTime(task.end_time.substring(0, 5)); 
         } else {
             setStartTime('09:00');
@@ -184,8 +370,20 @@ const SharedCalendarPage = () => {
                 headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
             });
             loadTasks(selectedDate);
+            
+            // Update dateTasksMap
+            const dateKey = formatLocalDate(selectedDate);
+            const currentDateTasks = dateTasksMap[dateKey] || [];
+            const updatedTasks = currentDateTasks.filter(t => t.id !== taskId);
+
+            refreshLeaderboard();
+            
+            setDateTasksMap({
+                ...dateTasksMap,
+                [dateKey]: updatedTasks
+            });
         } catch (error) {
-            console.error("Error deleting task:", error);
+            console.error("Error deleting shared task:", error);
         }
     };
 
@@ -197,6 +395,18 @@ const SharedCalendarPage = () => {
             
             console.log('Task toggled successfully');
             loadTasks(selectedDate);
+            
+            // Update dateTasksMap for calendar view
+            const dateKey = formatLocalDate(selectedDate);
+            const currentDateTasks = dateTasksMap[dateKey] || [];
+            const updatedTasks = currentDateTasks.map(t => 
+                t.id === task.id ? { ...t, completed: !task.completed } : t
+            );
+            
+            setDateTasksMap({
+                ...dateTasksMap,
+                [dateKey]: updatedTasks
+            });
             
             if (!task.completed) {
                 console.log('Task was marked as completed, checking for achievements...');
@@ -222,6 +432,7 @@ const SharedCalendarPage = () => {
                     });
                 }
             }
+            refreshLeaderboard();
         } catch (error) {
             console.error("Error toggling task:", error);
         }
@@ -234,13 +445,23 @@ const SharedCalendarPage = () => {
     };
 
     const tileClassName = ({ date }) => {
-        const formattedDate = date.toISOString().split('T')[0];
+        const formattedDate = formatLocalDate(date);
+        const tasksForDate = dateTasksMap[formattedDate] || [];
         
-        const hasTasksOnDate = tasks.some(task => 
-            new Date(task.date).toISOString().split('T')[0] === formattedDate
+        if (tasksForDate.length === 0) return null;
+        
+        const hasOverdueTasks = tasksForDate.some(task => 
+            !task.completed && new Date(task.date) < new Date().setHours(0,0,0,0)
         );
         
-        return hasTasksOnDate ? 'has-tasks' : null;
+        const hasDueTodayTasks = tasksForDate.some(task => 
+            !task.completed && 
+            task.date === formatLocalDate(new Date()) 
+        );
+        
+        if (hasOverdueTasks) return 'has-overdue-tasks';
+        if (hasDueTodayTasks) return 'has-due-today-tasks';
+        return 'has-tasks';
     };
 
     const formatSelectedDate = () => {
@@ -278,28 +499,38 @@ const SharedCalendarPage = () => {
         }
     };
 
+    // Get filtered tasks based on category and priority filters
+    const filteredTasks = getFilteredTasks();
+
     const themeStyle = {
         '--primary-color': themes[currentTheme].primary,
         '--secondary-color': themes[currentTheme].secondary,
         '--accent-color': themes[currentTheme].accent,
         '--text-color': themes[currentTheme].text,
+        '--secondtext-color': themes[currentTheme].secondtext,
         '--calendar-bg': themes[currentTheme].calendarBackground,
         '--task-bg': themes[currentTheme].taskBackground,
-        '--completed-task-bg': themes[currentTheme].completedTask
+        '--completed-task-bg': themes[currentTheme].completedTask,
+        '--primary-transparent': `${themes[currentTheme].primary}1a` ,
+        '--glass-bg-dynamic': currentTheme === 'dark' ? 'rgba(31, 41, 55, 0.8)' : 'rgba(255, 255, 255, 0.1)',
+        '--glass-border-dynamic': currentTheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)',
+        '--sidebar-bg': currentTheme === 'dark' ? '#1f2937' : 'var(--glass-bg)'
     };
 
     return (
         <div className="calendar-page" style={themeStyle}>
             <div className="calendar-sidebar">
                 <div className="calendar-header">
-                    <h2>Shared Calendar</h2>
-                    <button 
-                        onClick={toggleThemeSelector}
-                        className="theme-button"
-                        title="Change Theme"
-                    >
-                        <span role="img" aria-label="Theme">🎨</span>
-                    </button>
+                    <h2>{calendarInfo ? calendarInfo.name : 'Loading...'}</h2>
+                    <div className="header-buttons">
+                        <button 
+                            onClick={toggleThemeSelector}
+                            className="theme-button"
+                            title="Change Theme"
+                        >
+                            <span role="img" aria-label="Theme">🎨</span>
+                        </button>
+                    </div>
                 </div>
                 
                 {showThemeSelector && (
@@ -317,7 +548,6 @@ const SharedCalendarPage = () => {
                                         onClick={() => changeTheme(themeName)}
                                         style={{
                                             backgroundColor: themes[themeName].primary,
-                                            // Text color is now controlled by CSS classes for better specificity
                                         }}
                                     >
                                         {themes[themeName].name}
@@ -368,7 +598,18 @@ const SharedCalendarPage = () => {
                 <div className="selected-date-header">
                     <h3>{formatSelectedDate()}</h3>
                     <div className="task-count">
-                        {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+                        {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}
+                        {categoryFilter !== 'all' && categoryFilter !== null && (
+                            <span className="filter-indicator">
+                                (
+                                    {
+                                    categoryFilter === 'uncategorized'
+                                        ? 'Uncategorized'
+                                        : categories.find(cat => String(cat.id) === String(categoryFilter))?.name || 'Unknown'
+                                    }
+                                )
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -387,6 +628,39 @@ const SharedCalendarPage = () => {
                             onChange={(e) => setTaskDescription(e.target.value)}
                         />
                         
+                        {/* Category Selection */}
+                        <div className="category-selection">
+                            <label htmlFor="task-category">Category:</label>
+                            <select 
+                                id="task-category"
+                                value={selectedCategory} 
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                className="task-category-select"
+                            >
+                                <option value="">No Category</option>
+                                {categories.map(category => (
+                                    <option key={category.id} value={category.id}>
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Priority Selection */}
+                        <div className="priority-selection">
+                            <label htmlFor="task-priority">Priority:</label>
+                            <select 
+                                id="task-priority"
+                                value={taskPriority} 
+                                onChange={(e) => setTaskPriority(e.target.value)}
+                                className="task-priority-select"
+                            >
+                                <option value="low">Low Priority</option>
+                                <option value="medium">Medium Priority</option>
+                                <option value="high">High Priority</option>
+                            </select>
+                        </div>
+                        
                         {/* Task timing options */}
                         <div className="task-timing">
                             <div className="timing-option">
@@ -396,7 +670,6 @@ const SharedCalendarPage = () => {
                                         checked={isAllDay}
                                         onChange={() => setIsAllDay(!isAllDay)} 
                                     />
-                                    <span className="checkmark"></span>
                                     All day
                                 </label>
                             </div>
@@ -437,18 +710,13 @@ const SharedCalendarPage = () => {
                 )}
 
                 <div className="tasks-list">
-                    {tasks.length === 0 ? (
+                    {filteredTasks.length === 0 ? (
                         <div className="no-tasks">
-                            <p>No tasks for this date.</p>
-                            {!isAdding && (
-                                <button onClick={() => setIsAdding(true)} className="start-adding-btn">
-                                    Add Your First Task
-                                </button>
-                            )}
+                            <p>No tasks {categoryFilter && categoryFilter !== 'all' ? 'in this category' : 'for this date'}.</p>
                         </div>
                     ) : (
                         <ul>
-                            {tasks.map(task => (
+                            {filteredTasks.map(task => (
                                 <li key={task.id} className={task.completed ? 'completed' : ''}>
                                     <div className="task-header">
                                         <label className="task-checkbox">
@@ -459,20 +727,44 @@ const SharedCalendarPage = () => {
                                             />
                                             <span className="checkmark"></span>
                                         </label>
-                                        <div className="task-title-container">
-                                            <h4>{task.title}</h4>
-                                            {!task.is_all_day && task.start_time && task.end_time && (
+
+                                        {!task.is_all_day && task.start_time && task.end_time && (
                                                 <div className="task-time">
                                                     {formatTime(task.start_time)} - {formatTime(task.end_time)}
                                                 </div>
                                             )}
+                                        <div className="task-title-container">
+                                            <h4>{task.title}</h4>
+                                            
+                                            
+
+                                            <div className="task-priority-creator">
+                                                {/* Show priority for ALL tasks */}
+                                                {task.priority && (
+                                                    <div className={`task-priority priority-${task.priority} theme-based`}>
+                                                        {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
+                                                    </div>
+                                                )}
+                                                
+                                                {/* Show who created the task - positioned under priority */}
+                                                {task.created_by_username && (
+                                                    <div className="task-creator purple"> {/* You can change the color class here */}
+                                                        <span className="creator-label">👤</span>
+                                                        <span className="creator-name">
+                                                            {task.created_by_username}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            
                                         </div>
                                     </div>
-                                    
+
                                     {task.description && (
                                         <p className="task-description">{task.description}</p>
                                     )}
-                                    
+
                                     <div className="task-actions">
                                         <button onClick={() => handleEdit(task)} className="edit-btn">Edit</button>
                                         <button onClick={() => handleDelete(task.id)} className="delete-btn">Delete</button>
@@ -485,9 +777,74 @@ const SharedCalendarPage = () => {
 
                 {showLeaderboard && (
                     <div className="leaderboard-section">
-                        <Leaderboard calendarId={calendarId} />
+                        <Leaderboard calendarId={calendarId} 
+                        refreshTrigger={refreshTrigger}/>
                     </div>
                 )}
+            </div>
+
+            <div className='calendar-filter'>
+                {/* Use SharedTaskCategory component for category management */}
+                <SharedTaskCategory 
+                    calendarId={calendarId}
+                    onCategorySelect={setCategoryFilter}
+                    selectedCategory={categoryFilter === 'all' ? null : categoryFilter}
+                />
+
+                {/* Priority Filter and Sort Controls */}
+                <div className="priority-controls">
+                    <h4>Priority Filter</h4>
+                    <div className="priority-filter-buttons">
+                        <button 
+                            className={priorityFilter === null ? 'active' : ''}
+                            onClick={() => setPriorityFilter(null)}
+                        >
+                            All
+                        </button>
+                        <button 
+                            className={priorityFilter === 'high' ? 'active priority-high' : 'priority-high'}
+                            onClick={() => setPriorityFilter('high')}
+                        >
+                            High
+                        </button>
+                        <button 
+                            className={priorityFilter === 'medium' ? 'active priority-medium' : 'priority-medium'}
+                            onClick={() => setPriorityFilter('medium')}
+                        >
+                            Medium
+                        </button>
+                        <button 
+                            className={priorityFilter === 'low' ? 'active priority-low' : 'priority-low'}
+                            onClick={() => setPriorityFilter('low')}
+                        >
+                            Low
+                        </button>
+                    </div>
+                    
+                    <div className="sort-section">
+                        <h4>Sort By</h4>
+                        <div className="sort-controls">
+                            <select 
+                                value={prioritySort} 
+                                onChange={(e) => setPrioritySort(e.target.value)}
+                                className="sort-select"
+                            >
+                                <option value="high_first">High Priority First</option>
+                                <option value="low_first">Low Priority First</option>
+                                <option value="date_only">Date Only</option>
+                            </select>
+                            
+                            <select 
+                                value={dateSort} 
+                                onChange={(e) => setDateSort(e.target.value)}
+                                className="sort-select"
+                            >
+                                <option value="asc">Oldest First</option>
+                                <option value="desc">Newest First</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

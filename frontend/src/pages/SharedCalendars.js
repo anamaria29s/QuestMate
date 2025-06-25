@@ -14,6 +14,8 @@ const SharedCalendars = () => {
   const [receiverId, setReceiverId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null); // For delete confirmation
 
   useEffect(() => {
     fetchCalendars();
@@ -75,6 +77,8 @@ const SharedCalendars = () => {
       setCalendarName('');
       fetchCalendars();
       setError(null);
+      setSuccess('Calendar created successfully!');
+      setTimeout(() => setSuccess(null), 3000);
     } catch (error) {
       console.error('Error creating calendar:', error);
       setError('Failed to create calendar. Please try again.');
@@ -109,6 +113,8 @@ const SharedCalendars = () => {
       setReceiverId(null);
       fetchCalendars();
       setError(null);
+      setSuccess('Invitation sent successfully!');
+      setTimeout(() => setSuccess(null), 3000);
     } catch (error) {
       console.error('Error sending invite:', error);
       setError('Failed to send invitation. Please try again.');
@@ -128,6 +134,8 @@ const SharedCalendars = () => {
         },
       });
       fetchCalendars();
+      setSuccess('Invitation accepted successfully!');
+      setTimeout(() => setSuccess(null), 3000);
     } catch (error) {
       console.error('Error accepting invite:', error);
       setError('Failed to accept invitation. Please try again.');
@@ -147,9 +155,60 @@ const SharedCalendars = () => {
         },
       });
       fetchCalendars();
+      setSuccess('Invitation declined successfully!');
+      setTimeout(() => setSuccess(null), 3000);
     } catch (error) {
       console.error('Error declining invite:', error);
       setError('Failed to decline invitation. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteCalendar = async (calendarId, calendarName) => {
+    try {
+      setLoading(true);
+      const response = await axios.delete(`http://127.0.0.1:8000/api/shared-calendars/${calendarId}/delete/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access')}`,
+        },
+      });
+      
+      setSuccess(response.data.detail || `Calendar "${calendarName}" deleted successfully!`);
+      setTimeout(() => setSuccess(null), 3000);
+      setConfirmDelete(null);
+      fetchCalendars();
+    } catch (error) {
+      console.error('Error deleting calendar:', error);
+      if (error.response?.status === 403) {
+        setError('Only the calendar owner can delete this calendar.');
+      } else {
+        setError(error.response?.data?.detail || 'Failed to delete calendar. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLeaveCalendar = async (calendarId, calendarName) => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`http://127.0.0.1:8000/api/shared-calendars/${calendarId}/leave/`, {}, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access')}`,
+        },
+      });
+      
+      setSuccess(response.data.detail || `You have left "${calendarName}" successfully!`);
+      setTimeout(() => setSuccess(null), 3000);
+      fetchCalendars();
+    } catch (error) {
+      console.error('Error leaving calendar:', error);
+      if (error.response?.status === 400) {
+        setError(error.response.data.detail || 'Cannot leave this calendar.');
+      } else {
+        setError('Failed to leave calendar. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -174,12 +233,47 @@ const SharedCalendars = () => {
     setFilteredFriends([]);
   };
 
+  // Get current user from localStorage or context
+  const getCurrentUser = () => {
+    // You might want to get this from your auth context instead
+    return localStorage.getItem('username'); // Assuming you store username
+  };
+
+  const currentUser = getCurrentUser();
+
   return (
     <div className="shared-calendars-container">
       <div className="shared-calendars-header">
         <h2>Shared Calendars</h2>
         {error && <div className="error-message">{error}</div>}
+        {success && <div className="success-message">{success}</div>}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {confirmDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Confirm Delete</h3>
+            <p>Are you sure you want to delete "<strong>{confirmDelete.name}</strong>"?</p>
+            <p className="warning-text">This action cannot be undone. All tasks, categories, and memberships will be permanently deleted.</p>
+            <div className="modal-actions">
+              <button 
+                onClick={() => setConfirmDelete(null)}
+                className="action-btn cancel-btn"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => handleDeleteCalendar(confirmDelete.id, confirmDelete.name)}
+                className="action-btn delete-btn"
+                disabled={loading}
+              >
+                {loading ? 'Deleting...' : 'Delete Calendar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="shared-calendars-content">
         <div className="card calendars-list">
@@ -188,15 +282,48 @@ const SharedCalendars = () => {
             <div className="loader">Loading...</div>
           ) : calendars.length > 0 ? (
             <ul>
-              {calendars.map((cal) => (
-                <li key={cal.id} className="calendar-item">
-                  <div className="calendar-info">
-                    <span className="calendar-name">{cal.name}</span>
-                    <span className="calendar-owner">Created by: {cal.owner}</span>
-                  </div>
-                  <Link to={`/shared-calendar/${cal.id}`} className="view-btn">View</Link>
-                </li>
-              ))}
+              {calendars.map((cal) => {
+                const isOwner = cal.owner === currentUser;
+                return (
+                  <li key={cal.id} className="calendar-item">
+                    <div className="calendar-info">
+                      <span className="calendar-name">{cal.name}</span>
+                      <span className="calendar-owner">
+                        {isOwner ? 'Owned by you' : `Created by: ${cal.owner}`}
+                      </span>
+                      {cal.member_count && (
+                        <span className="member-count">
+                          {cal.member_count} member{cal.member_count !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    <div className="calendar-actions">
+                      <Link to={`/shared-calendar/${cal.id}`} className="action-btn view-btn">
+                        View
+                      </Link>
+                      {isOwner ? (
+                        <button
+                          onClick={() => setConfirmDelete({ id: cal.id, name: cal.name })}
+                          className="action-btn delete-btn"
+                          title="Delete Calendar"
+                          disabled={loading}
+                        >
+                          Delete
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleLeaveCalendar(cal.id, cal.name)}
+                          className="action-btn leave-btn"
+                          title="Leave Calendar"
+                          disabled={loading}
+                        >
+                          {loading ? 'Leaving...' : 'Leave'}
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="empty-message">No calendars available.</p>
@@ -232,12 +359,13 @@ const SharedCalendars = () => {
               className="select-field"
             >
               <option value="">Select a calendar</option>
-              {calendars.map((cal) => (
+              {calendars.filter(cal => cal.owner === currentUser).map((cal) => (
                 <option key={cal.id} value={cal.id}>
                   {cal.name}
                 </option>
               ))}
             </select>
+            <small className="help-text">You can only invite people to calendars you own</small>
           </div>
           <div className="form-group autocomplete-wrapper">
             <input
@@ -264,7 +392,7 @@ const SharedCalendars = () => {
           <button
             onClick={handleInvite}
             className="action-btn invite-btn"
-            disabled={loading}
+            disabled={loading || !calendars.some(cal => cal.owner === currentUser)}
           >
             {loading ? 'Sending...' : 'Send Invite'}
           </button>

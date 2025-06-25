@@ -1,34 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const Leaderboard = ({ calendarId }) => {
+const Leaderboard = ({ calendarId, refreshTrigger }) => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get(
-          `http://127.0.0.1:8000/api/calendars/${calendarId}/leaderboard/`,
-          {
-            headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
-          }
-        );
-        setLeaderboard(response.data);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching leaderboard:", err);
-        setError("Failed to load leaderboard data");
-        setLoading(false);
-      }
-    };
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(
+        `http://127.0.0.1:8000/api/calendars/${calendarId}/leaderboard/`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
+        }
+      );
+      setLeaderboard(response.data);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching leaderboard:", err);
+      setError("Failed to load leaderboard data");
+      setLoading(false);
+    }
+  }, [calendarId]);
 
+  useEffect(() => {
     if (calendarId) {
       fetchLeaderboard();
     }
-  }, [calendarId]);
+  }, [calendarId, refreshTrigger, fetchLeaderboard]);
 
   if (loading) return <div className="leaderboard-loading">Loading leaderboard...</div>;
   if (error) return <div className="leaderboard-error">{error}</div>;
