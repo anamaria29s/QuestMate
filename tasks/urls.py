@@ -7,7 +7,7 @@ from django.contrib.auth.views import LoginView
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import signup, login, get_profile, add_friend, update_profile, search_users
 urlpatterns = [
-    path('', views.index, name='index'), 
+    path('api/home/', views.index, name='index'), 
     path('api/signup/', signup, name='signup'),
     path('api/login/', login, name='login'),
     path('api/token/refresh/', views.token_refresh, name='token_refresh'),
@@ -34,11 +34,17 @@ urlpatterns = [
 
     # Shared Calendars
     path('api/shared-calendars/', views.list_shared_calendars, name='list_shared_calendars'),
+    path('api/shared-calendars/<int:calendar_id>/', views.shared_calendar_detail, name='shared_calendar_detail'),
     path('api/shared-calendars/create/', views.create_shared_calendar, name='create_shared_calendar'),
     path('api/shared-calendars/invite/', views.invite_to_calendar, name='invite_to_calendar'),
     path('api/shared-calendars/accept/', views.accept_calendar_invite, name='accept_calendar_invite'),
     path('api/shared-calendars/decline/', views.decline_calendar_invite, name='decline_calendar_invite'),
     path('api/shared-calendars/invites/', views.list_calendar_invites, name='list_calendar_invites'),
+     # Delete/edit calendar (owner only)
+    path('api/shared-calendars/<int:calendar_id>/delete/', views.delete_shared_calendar, name='delete_shared_calendar'),
+    path('api/shared-calendars/<int:calendar_id>/edit/', views.edit_shared_calendar, name='edit_shared_calendar'),
+    # Leave calendar (members only)
+    path('api/shared-calendars/<int:calendar_id>/leave/', views.leave_shared_calendar, name='leave_shared_calendar'),
 
     # Shared Tasks
     path('api/shared-tasks/<int:calendar_id>/', views.get_shared_tasks, name='get_shared_tasks'),
@@ -47,6 +53,12 @@ urlpatterns = [
     path('api/shared-tasks/<int:calendar_id>/<int:shared_task_id>/toggle/', views.toggle_shared_task_completion, name='toggle_shared_task_completion'),
     path('api/shared-tasks/<int:calendar_id>/add/', views.add_shared_task, name='add_shared_task'),
 
+    # Join/Leave Shared Tasks
+    path('api/shared-tasks/<int:calendar_id>/<int:shared_task_id>/join/', views.join_shared_task, name='join_shared_task'),
+    path('api/shared-tasks/<int:calendar_id>/<int:shared_task_id>/leave/', views.leave_shared_task, name='leave_shared_task'),
+
+
+
     # User achievements endpoints
     path('api/user/achievements/', views.get_user_achievements, name='user_achievements'),
     path('api/user/stats/', views.get_user_stats, name='user_stats'),
@@ -54,6 +66,30 @@ urlpatterns = [
 
     # Calendar leaderboard endpoint
     path('api/calendars/<int:calendar_id>/leaderboard/', views.get_calendar_leaderboard, name='calendar_leaderboard'),
+
+    # Personal Task Categories
+    path('api/task-categories/', views.task_category_list, name='task_category_list'),
+    path('api/task-categories/create/', views.create_task_category, name='create_task_category'),
+    path('api/task-categories/<int:category_id>/update/', views.update_task_category, name='update_task_category'),
+    path('api/task-categories/<int:category_id>/delete/', views.delete_task_category, name='delete_task_category'),
+
+    # Shared Task Categories
+    path('api/shared-calendars/<int:calendar_id>/categories/', views.get_shared_task_categories, name='get_shared_task_categories'),
+    path('api/shared-calendars/<int:calendar_id>/categories/create/', views.create_shared_task_category, name='create_shared_task_category'),
+    path('api/shared-calendars/<int:calendar_id>/categories/<int:category_id>/update/', views.update_shared_task_category, name='update_shared_task_category'),
+    path('api/shared-calendars/<int:calendar_id>/categories/<int:category_id>/delete/', views.delete_shared_task_category, name='delete_shared_task_category'),
+
+     # Tasks with priority filtering and sorting
+    path('api/tasks/priority/<str:priority_level>/', views.get_tasks_by_priority, name='get_tasks_by_priority'),
+    path('api/tasks/sorted/', views.get_tasks_sorted_by_priority, name='get_tasks_sorted_by_priority'),
+    
+    # Shared Tasks with priority filtering and sorting
+    path('api/shared-tasks/<int:calendar_id>/priority/<str:priority_level>/', views.get_shared_tasks_by_priority, name='get_shared_tasks_by_priority'),
+    path('api/shared-tasks/<int:calendar_id>/sorted/', views.get_shared_tasks_sorted_by_priority, name='get_shared_tasks_sorted_by_priority'),
+
+    # Priority statistics/overview
+    path('api/tasks/priority-stats/', views.get_priority_stats, name='get_priority_stats'),
+    path('api/shared-tasks/<int:calendar_id>/priority-stats/', views.get_shared_priority_stats, name='get_shared_priority_stats'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

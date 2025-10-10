@@ -39,12 +39,35 @@ class Friendship(models.Model):
     def __str__(self):
         return f"{self.user.username} is friends with {self.friend.username}"
 
+class TaskCategory(models.Model):
+    user = models.ForeignKey(User, related_name="categories", on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+    color = models.CharField(max_length=20)  
+    
+    class Meta:
+        unique_together = ('user', 'name')
+        verbose_name_plural = "Task Categories"
+    
+    def __str__(self):
+        return f"{self.name} ({self.user.username})"
+
 class Task(models.Model):
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
+    
     user = models.ForeignKey(User, related_name="tasks", on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     date = models.DateField()
+    is_all_day = models.BooleanField(default=True)
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
     completed = models.BooleanField(default=False)
+    category = models.ForeignKey(TaskCategory, related_name="tasks", on_delete=models.SET_NULL, null=True, blank=True)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
 
     def __str__(self):
         return self.title
@@ -62,19 +85,42 @@ class SharedCalendar(models.Model):
         return User.objects.filter(received_calendar_invites__calendar=self, received_calendar_invites__status='accepted')
 
 
-
+class SharedTaskCategory(models.Model):
+    calendar = models.ForeignKey(SharedCalendar, related_name="categories", on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+    color = models.CharField(max_length=20)  
     
+    class Meta:
+        unique_together = ('calendar', 'name')
+        verbose_name_plural = "Shared Task Categories"
+    
+    def __str__(self):
+        return f"{self.name} ({self.calendar.name})"
 
 class SharedTask(models.Model):
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
     calendar = models.ForeignKey(SharedCalendar, on_delete=models.CASCADE, related_name='tasks')
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     date = models.DateField()
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_tasks', null=True, blank=True)
+    is_all_day = models.BooleanField(default=True)
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
     completed = models.BooleanField(default=False)
+    completed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='completed_shared_tasks')
+    category = models.ForeignKey(SharedTaskCategory, related_name="tasks", on_delete=models.SET_NULL, null=True, blank=True)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    
+    # New field for joined users
+    joined_users = models.ManyToManyField(User, related_name='joined_shared_tasks', blank=True)
 
     def __str__(self):
         return f"{self.title} ({self.calendar.name})"
-
 
 
 class Membership(models.Model):

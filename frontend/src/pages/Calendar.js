@@ -1,39 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import './Calendar.css';
 import { useNotifications } from './NotificationContext';
 import { 
-  fetchTasks, 
   checkNewAchievements
 } from '../ApiService';
 import './Notification.css';
 import './AvailabilityChecker.css';
 import TaskProgressBar from './ProgressBar';
 import AvailabilityChecker from './AvailabilityChecker';
+import TaskCategory from './TaskCategory';
 
-// Define themes just like in SharedCalendarPage
 const themes = {
   default: {
     name: 'Default',
-    primary: '#8a2be2',         // Vibrant purple
-    secondary: '#f0e6fa',       // Light purple background
-    accent: '#a64dff',          // Lighter purple for accent
+    primary: '#8a2be2',         
+    secondary: '#f0e6fa',       
+    accent: '#a64dff',          
     text: '#333333',
+    secondtext: '#333333',
     calendarBackground: '#ffffff',
-    taskBackground: '#f8f5ff',  // Very light purple background
-    completedTask: '#e8e0f7'    // Light purple for completed tasks
+    taskBackground: '#f8f5ff',  
+    completedTask: '#e8e0f7'    
   },
   dark: {
     name: 'Dark Mode',
-    primary: '#2c3e50',
-    secondary: '#34495e',
-    accent: '#1abc9c',
-    text: '#ffffff',          // Brighter white text for better contrast
-    calendarBackground: '#2c3e50',
-    taskBackground: '#34495e',
-    completedTask: '#2c3e50'
+    primary: '#10b981',        
+    secondary: '#059669',       
+    accent: '#34d399',         
+    text: '#ffffff',          
+    secondtext: '#d1d5db',     
+    calendarBackground: '#111827',  
+    taskBackground: '#1f2937',      
+    completedTask: '#065f46'  
   },
   pastel: {
     name: 'Pastel',
@@ -41,29 +42,31 @@ const themes = {
     secondary: '#f0e6fa',
     accent: '#87ceeb',
     text: '#5d4037',
+    secondtext: '#5d4037',
     calendarBackground: '#fff8e1',
     taskBackground: '#f5f5f5',
     completedTask: '#e0f7fa'
   },
   vibrant: {
     name: 'Vibrant',
-    primary: '#ff5722',         // Dark orange
-    secondary: '#fff3e0',       // Light orange background
-    accent: '#ff8a65',          // Lighter orange for accent elements
+    primary: '#ff5722',         
+    secondary: '#fff3e0',       
+    accent: '#ff8a65',          
     text: '#212121',
+    secondtext: '#212121',
     calendarBackground: '#ffffff',
-    taskBackground: '#fff8e6',   // Very light orange background
-    completedTask: '#ffecb3'     // Light orange for completed tasks
+    taskBackground: '#fff8e6',   
+    completedTask: '#ffecb3'     
   },
   professional: {
     name: 'Professional',
-    primary: '#1a237e',         // Dark blue
-    secondary: '#e8eaf6',       // Light blue-gray background
-    accent: '#3949ab',          // Medium blue for accent elements
-    text: '#212121',            // Dark text for better readability
-    calendarBackground: '#ffffff', // White background for calendar
-    taskBackground: '#e8eaf6',   // Light blue-gray for tasks
-    completedTask: '#d1d9ff'     // Light blue for completed tasks
+    primary: '#1a237e',        
+    secondary: '#e8eaf6',       
+    accent: '#3949ab',          
+    secondtext: '#212121',            
+    calendarBackground: '#ffffff', 
+    taskBackground: '#e8eaf6',   
+    completedTask: '#d1d9ff'     
   }
 };
 
@@ -77,18 +80,21 @@ const CalendarPage = () => {
     const [isAdding, setIsAdding] = useState(false);
     const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
     const { addNotification } = useNotifications();
-    // State for task timing
     const [isAllDay, setIsAllDay] = useState(true);
     const [startTime, setStartTime] = useState('09:00');
     const [endTime, setEndTime] = useState('10:00');
-    // State to track task progress for dates
     const [dateTasksMap, setDateTasksMap] = useState({});
-    
-    // New theme-related state
     const [showThemeSelector, setShowThemeSelector] = useState(false);
     const [currentTheme, setCurrentTheme] = useState('default');
+    const [categories, setCategories] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState(null); 
+    const [priorityFilter, setPriorityFilter] = useState(null); 
+    const [prioritySort, setPrioritySort] = useState('high_first'); 
+    const [dateSort, setDateSort] = useState('asc'); 
+    const [taskPriority, setTaskPriority] = useState('medium'); 
+    const [allDayTasks, setAllDayTasks] = useState([]);
 
-    // Load saved theme from localStorage on component mount
     useEffect(() => {
         const savedTheme = localStorage.getItem('personal_calendar_theme');
         if (savedTheme && themes[savedTheme]) {
@@ -96,54 +102,146 @@ const CalendarPage = () => {
         }
     }, []);
 
-    const loadTasks = async (date) => {
+    const formatLocalDate = (date) => {
+        const localDate = new Date(date);
+        
+        const year = localDate.getFullYear();
+        const month = String(localDate.getMonth() + 1).padStart(2, '0');
+        const day = String(localDate.getDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`;
+    };
+    
+
+    const loadCategories = useCallback(async () => {
         try {
-            const data = await fetchTasks(date);
-            setTasks(data);
+            const token = localStorage.getItem('access');
+            if (!token) return;
+
+            const response = await axios.get('http://127.0.0.1:8000/api/task-categories/', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            setCategories(response.data);
+        } catch (error) {
+            console.error("Error fetching categories:", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadCategories();
+    }, [loadCategories]);        
+
+    const getFilteredTasks = () => {
+        let filtered = tasks;
+        
+        if (selectedDate) {
+        const selectedDateString = formatLocalDate(selectedDate);
+        filtered = filtered.filter(task => {
+            return task.date === selectedDateString;
+        });
+    }
+        
+        if (categoryFilter !== null) {
+            filtered = filtered.filter(task => String(task.category) === String(categoryFilter));
+        }
+        
+        if (priorityFilter !== null) {
+            filtered = filtered.filter(task => task.priority === priorityFilter);
+        }
+        
+        return filtered;
+    };
+    const getAllTasksForSelectedDate = () => {
+        if (!selectedDate) return [];
+        
+        const selectedDateString = selectedDate.toISOString().split('T')[0];
+        return tasks.filter(task => {
+            const taskDateString = new Date(task.date).toISOString().split('T')[0];
+            return taskDateString === selectedDateString;
+        });
+    };
+    
+    const loadTasks = useCallback(async (date) => {
+        try {
+            const formattedDate = formatLocalDate(date);
+            console.log("Loading tasks for formatted date:", formattedDate);
+            
+            const token = localStorage.getItem('access');
+            if (!token) {
+                console.error("No access token found");
+                return;
+            }
+            const allTasksResponse = await axios.get('http://127.0.0.1:8000/api/tasks/', {
+                params: { date: formattedDate },
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            setAllDayTasks(allTasksResponse.data);
+            
+            let url = 'http://127.0.0.1:8000/api/tasks/';
+            const params = new URLSearchParams({ date: formattedDate });
+            
+            if (prioritySort !== 'date_only') {
+                url = 'http://127.0.0.1:8000/api/tasks/sorted/';
+                params.append('priority_sort', prioritySort);
+                params.append('date_sort', dateSort);
+            }
+            
+            const response = await axios.get(`${url}?${params}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            let filteredTasks = response.data;
+            if (priorityFilter) {
+                filteredTasks = response.data.filter(task => task.priority === priorityFilter);
+            }
+            
+            setTasks(filteredTasks);
         } catch (error) {
             console.error("Error fetching tasks:", error);
         }
-    };
+    }, [priorityFilter, prioritySort, dateSort]);
 
     useEffect(() => {
         loadTasks(selectedDate);
-    }, [selectedDate]);
+    }, [selectedDate, loadTasks]);
 
-    // Effect to load tasks for the whole month for progress tracking
     useEffect(() => {
-        const fetchMonthTasks = async () => {
-            try {
-                // First day of current month view
-                const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-                // Last day of current month view
-                const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+    const fetchMonthTasks = async () => {
+        try {
+            const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+            const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+            
+            const response = await axios.get('http://127.0.0.1:8000/api/tasks/', {
+                params: {
+                    start_date: formatLocalDate(firstDay),
+                    end_date: formatLocalDate(lastDay)
+                },
+                headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
+            });
+            
+            const tasksByDate = {};
+            response.data.forEach(task => {
+                const dateKey = task.date; 
                 
-                const response = await axios.get('http://127.0.0.1:8000/api/tasks/', {
-                    params: {
-                        start_date: firstDay.toISOString().split('T')[0],
-                        end_date: lastDay.toISOString().split('T')[0]
-                    },
-                    headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
-                });
-                
-                // Organize tasks by date
-                const tasksByDate = {};
-                response.data.forEach(task => {
-                    const dateKey = task.date;
-                    if (!tasksByDate[dateKey]) {
-                        tasksByDate[dateKey] = [];
-                    }
-                    tasksByDate[dateKey].push(task);
-                });
-                
-                setDateTasksMap(tasksByDate);
-            } catch (error) {
-                console.error("Error fetching month tasks:", error);
-            }
-        };
-        
-        fetchMonthTasks();
-    }, [currentMonth]);
+                if (!tasksByDate[dateKey]) {
+                    tasksByDate[dateKey] = [];
+                }
+                tasksByDate[dateKey].push(task);
+            });
+            
+            console.log('Tasks by date:', tasksByDate);
+            console.log('Current month:', currentMonth);
+            
+            setDateTasksMap(tasksByDate);
+        } catch (error) {
+            console.error("Error fetching month tasks:", error);
+        }
+    };
+    
+    fetchMonthTasks();
+}, [currentMonth]);
 
     const handleDateChange = (newDate) => {
         setSelectedDate(newDate);
@@ -164,17 +262,23 @@ const CalendarPage = () => {
         setIsAllDay(true);
         setStartTime('09:00');
         setEndTime('10:00');
+        setSelectedCategory('');
+        setTaskPriority('medium');
     };
 
     const handleTaskSubmit = async () => {
         if (!taskTitle.trim()) return;
         
         try {
+            const formattedDate = formatLocalDate(selectedDate);
+            
             const taskData = {
-                date: selectedDate.toISOString().split('T')[0],
+                date: formattedDate,
                 title: taskTitle,
                 description: taskDescription,
                 is_all_day: isAllDay,
+                category: selectedCategory || null,
+                priority: taskPriority,
             };
 
             if (!isAllDay) {
@@ -195,10 +299,11 @@ const CalendarPage = () => {
             resetTaskForm();
             setEditingTask(null);
             setIsAdding(false);
-            loadTasks(selectedDate);
             
-            // Refresh the month view data
-            const dateKey = selectedDate.toISOString().split('T')[0];
+            loadTasks(selectedDate);
+            loadCategories(); 
+            
+            const dateKey = formatLocalDate(selectedDate);
             const currentDateTasks = dateTasksMap[dateKey] || [];
             
             if (editingTask) {
@@ -210,21 +315,21 @@ const CalendarPage = () => {
                     [dateKey]: updatedTasks
                 });
             } else {
-                // For simplicity's sake, reload the entire month tasks
+                // Refresh the entire month view
                 const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
                 const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
                 
                 const response = await axios.get('http://127.0.0.1:8000/api/tasks/', {
                     params: {
-                        start_date: firstDay.toISOString().split('T')[0],
-                        end_date: lastDay.toISOString().split('T')[0]
+                        start_date: formatLocalDate(firstDay),
+                        end_date: formatLocalDate(lastDay)
                     },
                     headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
                 });
                 
                 const tasksByDate = {};
                 response.data.forEach(task => {
-                    const dateKey = task.date;
+                    const dateKey = task.date; 
                     if (!tasksByDate[dateKey]) {
                         tasksByDate[dateKey] = [];
                     }
@@ -238,14 +343,17 @@ const CalendarPage = () => {
         }
     };
 
+
     const handleEdit = (task) => {
         setEditingTask(task);
         setTaskTitle(task.title);
         setTaskDescription(task.description);
+        setSelectedCategory(task.category || '');
+        setTaskPriority(task.priority || 'medium');
         
         setIsAllDay(task.is_all_day);
         if (!task.is_all_day && task.start_time && task.end_time) {
-            setStartTime(task.start_time.substring(0, 5)); // Format HH:MM
+            setStartTime(task.start_time.substring(0, 5)); 
             setEndTime(task.end_time.substring(0, 5)); 
         } else {
             setStartTime('09:00');
@@ -260,10 +368,10 @@ const CalendarPage = () => {
             await axios.delete(`http://127.0.0.1:8000/api/tasks/${taskId}/delete/`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
             });
+            
             loadTasks(selectedDate);
             
-            // Update the month view data
-            const dateKey = selectedDate.toISOString().split('T')[0];
+            const dateKey = formatLocalDate(selectedDate);
             const currentDateTasks = dateTasksMap[dateKey] || [];
             const updatedTasks = currentDateTasks.filter(t => t.id !== taskId);
             
@@ -287,8 +395,7 @@ const CalendarPage = () => {
             
             loadTasks(selectedDate);
             
-            // Update the month view data
-            const dateKey = selectedDate.toISOString().split('T')[0];
+            const dateKey = formatLocalDate(selectedDate);
             const currentDateTasks = dateTasksMap[dateKey] || [];
             const updatedTasks = currentDateTasks.map(t => 
                 t.id === task.id ? { ...t, completed: !task.completed } : t
@@ -322,7 +429,7 @@ const CalendarPage = () => {
             console.error("Error toggling task:", error);
         }
     };
-    
+
     const cancelEditing = () => {
         setEditingTask(null);
         resetTaskForm();
@@ -330,22 +437,20 @@ const CalendarPage = () => {
     };
 
     const tileClassName = ({ date }) => {
-        const formattedDate = date.toISOString().split('T')[0];
+        const formattedDate = formatLocalDate(date);
         const tasksForDate = dateTasksMap[formattedDate] || [];
         
         if (tasksForDate.length === 0) return null;
         
-        // Check if the date has tasks with specific statuses
         const hasOverdueTasks = tasksForDate.some(task => 
             !task.completed && new Date(task.date) < new Date().setHours(0,0,0,0)
         );
         
         const hasDueTodayTasks = tasksForDate.some(task => 
             !task.completed && 
-            new Date(task.date).toDateString() === new Date().toDateString()
+            task.date === formatLocalDate(new Date()) 
         );
         
-        // Return appropriate class
         if (hasOverdueTasks) return 'has-overdue-tasks';
         if (hasDueTodayTasks) return 'has-due-today-tasks';
         return 'has-tasks';
@@ -364,7 +469,6 @@ const CalendarPage = () => {
         return timeString.substring(0, 5); 
     };
 
-    // New function to handle adding a task from availability checker
     const handleAddTaskFromAvailability = (date, startTime, endTime) => {
         setSelectedDate(date);
         setIsAllDay(false);
@@ -374,7 +478,6 @@ const CalendarPage = () => {
         setIsCheckingAvailability(false);
     };
 
-    // New theme functions
     const toggleThemeSelector = () => {
         setShowThemeSelector(!showThemeSelector);
     };
@@ -393,23 +496,31 @@ const CalendarPage = () => {
         }
     };
 
-    // Apply theme styles
+    
+    
+    const filteredTasks = getFilteredTasks();
+    const allTasksForDate = getAllTasksForSelectedDate();
+    
+
     const themeStyle = {
         '--primary-color': themes[currentTheme].primary,
         '--secondary-color': themes[currentTheme].secondary,
         '--accent-color': themes[currentTheme].accent,
         '--text-color': themes[currentTheme].text,
+        '--secondtext-color': themes[currentTheme].secondtext,
         '--calendar-bg': themes[currentTheme].calendarBackground,
         '--task-bg': themes[currentTheme].taskBackground,
         '--completed-task-bg': themes[currentTheme].completedTask,
-        '--primary-transparent': `${themes[currentTheme].primary}1a` 
+        '--primary-transparent': `${themes[currentTheme].primary}1a`,
+        '--glass-bg-dynamic': currentTheme === 'dark' ? 'rgba(31, 41, 55, 0.8)' : 'rgba(255, 255, 255, 0.1)',
+        '--glass-border-dynamic': currentTheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)',
+        '--sidebar-bg': currentTheme === 'dark' ? '#1f2937' : 'var(--glass-bg)'
     };
-
     return (
         <div className="calendar-page" style={themeStyle}>
             <div className="calendar-sidebar">
                 <div className="calendar-header">
-                    <h2>Tasks Calendar</h2>
+                    <h2>My Calendar</h2>
                     <button 
                         onClick={toggleThemeSelector}
                         className="theme-button"
@@ -418,6 +529,9 @@ const CalendarPage = () => {
                         <span role="img" aria-label="Theme">🎨</span>
                     </button>
                 </div>
+
+                
+                
                 
                 {showThemeSelector && (
                     <div className="theme-selector">
@@ -462,20 +576,29 @@ const CalendarPage = () => {
                     tileClassName={tileClassName}
                     className={`calendar-${currentTheme}`}
                 />
-                
-                <div className="add-task-button-container">
-                    <button 
-                        onClick={() => setIsAdding(!isAdding)} 
-                        className={`add-task-button ${isAdding ? 'active' : ''}`}
-                    >
-                        {isAdding ? 'Cancel' : '+ Add New Task'}
-                    </button>
-                    <button 
-                        onClick={() => setIsCheckingAvailability(true)} 
-                        className="check-availability-button"
-                    >
-                        Check Availability
-                    </button>
+                <div>
+                     <div className="add-task-button-container">
+                        <button 
+                            onClick={() => setIsAdding(!isAdding)} 
+                            className={`add-task-button ${isAdding ? 'active' : ''}`}
+                        >
+                            {isAdding ? 'Cancel' : '+ Add New Task'}
+                        </button>
+                        <button 
+                            onClick={() => setIsCheckingAvailability(true)} 
+                            className="check-availability-button"
+                        >
+                            Check Availability
+                        </button>
+                    </div>
+                    {/* Availability Checker Modal */}
+                    {isCheckingAvailability && (
+                        <AvailabilityChecker 
+                            onClose={() => setIsCheckingAvailability(false)} 
+                            onAddTask={handleAddTaskFromAvailability}
+                            selectedDate={selectedDate}
+                        />
+                    )}
                 </div>
             </div>
 
@@ -483,13 +606,25 @@ const CalendarPage = () => {
                 <div className="selected-date-header">
                     <h3>{formatSelectedDate()}</h3>
                     <div className="task-count">
-                        {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+                        {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}
+                        {categoryFilter !== 'all' && categoryFilter !== null && (
+                            <span className="filter-indicator">
+                            (
+                                {
+                                categoryFilter === 'uncategorized'
+                                    ? 'Uncategorized'
+                                    : categories.find(cat => String(cat.id) === String(categoryFilter))?.name || 'Unknown'
+                                }
+                            )
+                            </span>
+
+                        )}
                     </div>
                 </div>
                 
                 {/* Task Progress Bar */}
-                {tasks.length > 0 && (
-                    <TaskProgressBar tasks={tasks} />
+                {allDayTasks.length > 0 && (
+                    <TaskProgressBar tasks={allDayTasks} />
                 )}
 
                 {isAdding && (
@@ -507,6 +642,37 @@ const CalendarPage = () => {
                             onChange={(e) => setTaskDescription(e.target.value)}
                         />
                         
+                        {/* Category Selection */}
+                        <div className="category-selection">
+                            <label htmlFor="task-category">Category:</label>
+                            <select 
+                                id="task-category"
+                                value={selectedCategory} 
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                className="task-category-select"
+                            >
+                                <option value="">No Category</option>
+                                {categories.map(category => (
+                                    <option key={category.id} value={category.id}>
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        {/* Priority Selection */}
+                        <div className="priority-selection">
+                            <label htmlFor="task-priority">Priority:</label>
+                            <select 
+                                id="task-priority"
+                                value={taskPriority} 
+                                onChange={(e) => setTaskPriority(e.target.value)}
+                                className="task-priority-select"
+                            >
+                                <option value="low">Low Priority</option>
+                                <option value="medium">Medium Priority</option>
+                                <option value="high">High Priority</option>
+                            </select>
+                        </div>
                         {/* Task timing options */}
                         <div className="task-timing">
                             <div className="timing-option">
@@ -542,7 +708,6 @@ const CalendarPage = () => {
                             )}
                         </div>
 
-                        
                         <div className="form-buttons">
                             <button onClick={cancelEditing} className="cancel-btn">Cancel</button>
                             <button 
@@ -557,63 +722,125 @@ const CalendarPage = () => {
                 )}
 
                 <div className="tasks-list">
-                    {tasks.length === 0 ? (
+                    {filteredTasks.length === 0 ? (
                         <div className="no-tasks">
-                            <p>No tasks for this date.</p>
-                            {!isAdding && (
-                                <button onClick={() => setIsAdding(true)} className="start-adding-btn">
-                                    Add Your First Task
-                                </button>
-                            )}
+                        <p>No tasks {categoryFilter ? 'in this category' : 'for this date'}.</p>
                         </div>
                     ) : (
                         <ul>
-                            {tasks.map(task => (
-                                <li key={task.id} className={task.completed ? 'completed' : ''}>
-                                    <div className="task-header">
-                                        <label className="task-checkbox">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={task.completed} 
-                                                onChange={() => handleToggleTaskCompletion(task)} 
-                                            />
-                                            <span className="checkmark"></span>
-                                        </label>
-                                        <div className="task-title-container">
-                                            <h4>{task.title}</h4>
-                                            {!task.is_all_day && task.start_time && task.end_time && (
+                        {filteredTasks.map(task => (
+                            <li key={task.id} className={task.completed ? 'completed' : ''}>
+                            <div className="task-header">
+                                <label className="task-checkbox">
+                                <input 
+                                    type="checkbox" 
+                                    checked={task.completed} 
+                                    onChange={() => handleToggleTaskCompletion(task)} 
+                                />
+                                <span className="checkmark"></span>
+                                </label>
+                                {!task.is_all_day && task.start_time && task.end_time && (
                                                 <div className="task-time">
                                                     {formatTime(task.start_time)} - {formatTime(task.end_time)}
                                                 </div>
                                             )}
-                                        </div>
+                                <div className="task-title-container">
+                                <h4>{task.title}</h4>
+        
+                                {/* Show priority for ALL tasks */}
+                                {task.priority && (
+                                    <div className={`task-priority priority-${task.priority} theme-based`}>
+                                        {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
                                     </div>
-                                    
-                                    {task.description && (
-                                        <p className="task-description">{task.description}</p>
-                                    )}
-                                    
-                                    <div className="task-actions">
-                                        <button onClick={() => handleEdit(task)} className="edit-btn">Edit</button>
-                                        <button onClick={() => handleDelete(task.id)} className="delete-btn">Delete</button>
-                                    </div>
-                                </li>
-                            ))}
+                                )}
+        
+                                </div>
+                            </div>
+
+                            {task.description && (
+                                <p className="task-description">{task.description}</p>
+                            )}
+
+                            <div className="task-actions">
+                                <button onClick={() => handleEdit(task)} className="edit-btn">Edit</button>
+                                <button onClick={() => handleDelete(task.id)} className="delete-btn">Delete</button>
+                            </div>
+                            </li>
+                        ))}
                         </ul>
                     )}
-                </div>
+                    </div>
+
+            </div>
+
+            <div className='calendar-filter'>
+                <TaskCategory 
+                    onCategorySelect={setCategoryFilter}
+                    selectedCategory={categoryFilter === 'all' ? null : categoryFilter}
+                />
+
+                {/* Priority Filter and Sort Controls */}
+                    <div className="priority-controls">
+                        <h4>Priority Filter</h4>
+                        <div className="priority-filter-buttons">
+                            <button 
+                                className={priorityFilter === null ? 'active' : ''}
+                                onClick={() => setPriorityFilter(null)}
+                            >
+                                All
+                            </button>
+                            <button 
+                                className={priorityFilter === 'high' ? 'active priority-high' : 'priority-high'}
+                                onClick={() => setPriorityFilter('high')}
+                            >
+                                High
+                            </button>
+                            <button 
+                                className={priorityFilter === 'medium' ? 'active priority-medium' : 'priority-medium'}
+                                onClick={() => setPriorityFilter('medium')}
+                            >
+                                Medium
+                            </button>
+                            <button 
+                                className={priorityFilter === 'low' ? 'active priority-low' : 'priority-low'}
+                                onClick={() => setPriorityFilter('low')}
+                            >
+                                Low
+                            </button>
+                        </div>
+                        
+                        <div className="sort-section">
+                            <h4>Sort By</h4>
+                            <div className="sort-controls">
+                                <select 
+                                    value={prioritySort} 
+                                    onChange={(e) => setPrioritySort(e.target.value)}
+                                    className="sort-select"
+                                >
+                                    <option value="none">Date Only</option>
+                                    <option value="high_first">High Priority First</option>
+                                    <option value="low_first">Low Priority First</option>
+                                </select>
+                                
+                                <select 
+                                    value={dateSort} 
+                                    onChange={(e) => setDateSort(e.target.value)}
+                                    className="sort-select"
+                                >
+                                    <option value="asc">Newest First</option>
+                                    <option value="desc">Oldest First</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                   
+
             </div>
             
-            {/* Availability Checker Modal */}
-            {isCheckingAvailability && (
-                <AvailabilityChecker 
-                    onClose={() => setIsCheckingAvailability(false)} 
-                    onAddTask={handleAddTaskFromAvailability}
-                    selectedDate={selectedDate}
-                />
-            )}
+            
         </div>
     );
 };
 
-export default CalendarPage;
+export default CalendarPage

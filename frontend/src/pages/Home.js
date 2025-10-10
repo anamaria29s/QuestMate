@@ -1,23 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import './Home.css';
 import { motion } from 'framer-motion';
+import { checkAuth } from '../AuthService';
 
 const Home = () => {
-    // State to track if user is logged in
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isChecking, setIsChecking] = useState(true);
     
-    // Effect to check authentication status when component mounts
     useEffect(() => {
-        // Here you would check your authentication state
-        // For example, checking if there's a token in localStorage or using your auth service
-        const checkAuthStatus = () => {
-            // This is just a placeholder - replace with your actual auth check logic
-            const token = localStorage.getItem('authToken');
-            setIsLoggedIn(!!token);
+        const checkAuthStatus = async () => {
+            try {
+                // Use your existing checkAuth function instead of directly accessing localStorage
+                const authStatus = await checkAuth();
+                setIsLoggedIn(authStatus);
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                setIsLoggedIn(false);
+            } finally {
+                setIsChecking(false);
+            }
         };
         
         checkAuthStatus();
     }, []);
+
+    // Show loading state while checking authentication
+    if (isChecking) {
+        return (
+            <div className="home-container">
+                <div className="hero-section">
+                    <div className="hero-content">
+                        <p>Loading...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="home-container">
@@ -33,7 +51,6 @@ const Home = () => {
                         QuestMate helps you track tasks, collaborate with friends, and stay motivated on your journey to productivity.
                     </p>
                     
-                    {/* Render login/signup buttons only when not logged in */}
                     {!isLoggedIn && (
                         <div className="hero-buttons">
                             <motion.button 
@@ -99,6 +116,23 @@ const Home = () => {
                         <div className="feature-icon">🏆</div>
                         <h3>Achievements</h3>
                         <p>Earn rewards and track your progress as you complete tasks and reach milestones.</p>
+                    </motion.div>
+                    <motion.div 
+                        className="feature-card"
+                        whileHover={{ y: -10, boxShadow: "0 10px 20px rgba(0,0,0,0.1)" }}
+                    >
+                        <div className="feature-icon">🏷️</div>
+                        <h3>Smart Categories</h3>
+                        <p>Organize your tasks with intelligent categorization and custom tags for better workflow management.</p>
+                    </motion.div>
+                    
+                    <motion.div 
+                        className="feature-card"
+                        whileHover={{ y: -10, boxShadow: "0 10px 20px rgba(0,0,0,0.1)" }}
+                    >
+                        <div className="feature-icon">🥇</div>
+                        <h3>Leaderboards</h3>
+                        <p>Compete with friends and climb the rankings as you complete tasks and achieve your goals.</p>
                     </motion.div>
                 </div>
             </motion.div>

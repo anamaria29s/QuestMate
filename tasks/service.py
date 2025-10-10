@@ -35,7 +35,26 @@ def update_task_completion_stats(user, calendar=None):
     
     check_achievements(user)
 
-
+def decrement_task_completion_stats(user, calendar=None):
+    try:
+        stats = UserStats.objects.get(user=user)
+        # Only decrement if there are tasks to decrement
+        if stats.total_tasks_completed > 0:
+            stats.total_tasks_completed -= 1
+            stats.save()
+    except UserStats.DoesNotExist:
+        pass  # No stats to decrement
+    
+    if calendar:
+        try:
+            calendar_stats = CalendarStats.objects.get(user=user, calendar=calendar)
+            # Only decrement if there are tasks to decrement
+            if calendar_stats.tasks_completed > 0:
+                calendar_stats.tasks_completed -= 1
+                calendar_stats.save()
+        except CalendarStats.DoesNotExist:
+            pass  # No stats to decrement
+        
 def check_achievements(user):
     try:
         stats = UserStats.objects.get(user=user)

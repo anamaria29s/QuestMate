@@ -77,3 +77,13 @@ export const fetchUserAchievements = async () => {
         return [];
     }
 };
+
+export const fetchTasksInRange = async (startDate, endDate) => {
+  const response = await axios.get(`${API_URL}/tasks/`, {
+    params: {
+      start_date: startDate,
+      end_date: endDate
+    }
+  });
+  return response.data;
+};
