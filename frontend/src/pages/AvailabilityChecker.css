@@ -66,12 +66,13 @@
 
 .date-inputs {
   display: flex;
+  flex-direction: column;
   gap: 1rem;
   margin-bottom: 1.25rem;
 }
 
 .date-input {
-  flex: 1;
+  width: 100%;
 }
 
 .date-input label {
@@ -89,6 +90,7 @@
   font-size: 1rem;
   background-color: var(--calendar-bg, #fff);
   color: var(--text-color, #333);
+  box-sizing: border-box;
 }
 
 .date-input input:focus {
@@ -98,8 +100,8 @@
 }
 
 .check-availability-btn {
-  background-color: var(--primary-color, #4a6fa5);
-  color: var(--secondtext-color, white);
+  background-color: var(--accent-color, #4a6fa5);
+  color: var(--task-bg, white);
   border: none;
   border-radius: 4px;
   padding: 0.75rem 1.5rem;
@@ -126,7 +128,6 @@
   font-size: 0.9rem;
 }
 
-/* Enhanced Availability legend styles */
 .availability-legend {
   display: flex;
   justify-content: center;
@@ -166,7 +167,6 @@
   background-color: #fc8181;
 }
 
-/* Enhanced Calendar availability indicator styles */
 .react-calendar .available {
   background-color: rgba(104, 211, 145, 0.3) !important;
   color: #22543d !important;
@@ -185,7 +185,6 @@
   border: 2px solid #fc8181 !important;
 }
 
-/* Increased visibility for tile content indicators */
 .react-calendar .availability-indicator {
   height: 10px;
   width: 10px;
@@ -207,7 +206,6 @@
   background-color: #fc8181;
 }
 
-/* Availability results styling */
 .availability-results {
   margin-top: 2rem;
 }
@@ -305,14 +303,17 @@
 }
 
 .add-task-btn {
-  background-color: var(--primary-color, #4a6fa5);
-  color: var(--secondtext-color, white);
+  background-color: var(--accent-color, #4a6fa5);
+  color: var(--calendar-bg);
   border: none;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 0.85rem;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.2s;
+  min-width: 100px;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .add-task-btn:hover {
@@ -322,10 +323,6 @@
 
 /* For mobile responsiveness */
 @media (max-width: 600px) {
-  .date-inputs {
-    flex-direction: column;
-  }
-  
   .availability-day {
     flex-direction: column;
     align-items: flex-start;

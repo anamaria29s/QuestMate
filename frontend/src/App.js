@@ -14,8 +14,6 @@ import SharedCalendarPage from './pages/SharedCalendarPage';
 import AuthCheck from './AuthCheck';
 import { NotificationProvider } from './pages/NotificationContext';
 
-
-
 function App() {
     return (
         <NotificationProvider>
@@ -23,20 +21,23 @@ function App() {
                 <div className="App">
                     <Header />
                     <Routes>
-                        <Route path="/" element={
-                            <AuthCheck>
-                                <Home />
-                            </AuthCheck>
-                        } />
+                        {/* Public Home Route - accessible without authentication */}
+                        <Route path="/" element={<Home />} />
+                        <Route path="/home" element={<Home />} />
+                        
+                        {/* Authentication Routes */}
                         <Route path="/signup" element={<Signup />} />
                         <Route path="/login" element={<Login />} />
+                        
+                        {/* Protected Routes */}
                         <Route path="/calendar" element={<PrivateRoute component={CalendarPage} />} />
-                        <Route path="/" element={<Navigate to="/calendar" />} />
-                        <Route path="/profile/:username" element={<Profile />} />
-                        <Route path="/profile/:username/update" element={<UpdateProfile />} />
-                        <Route path="/sharedcalendars" element={<SharedCalendars />} />
-                        <Route path="/shared-calendar/:id" element={<SharedCalendarPage />} />
-
+                        <Route path="/profile/:username" element={<PrivateRoute component={Profile} />} />
+                        <Route path="/profile/:username/update" element={<PrivateRoute component={UpdateProfile} />} />
+                        <Route path="/sharedcalendars" element={<PrivateRoute component={SharedCalendars} />} />
+                        <Route path="/shared-calendar/:id" element={<PrivateRoute component={SharedCalendarPage} />} />
+                        
+                        {/* Catch all route - redirect to home */}
+                        <Route path="*" element={<Navigate to="/home" replace />} />
                     </Routes>
                 </div>
             </Router>

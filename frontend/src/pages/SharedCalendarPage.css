@@ -128,7 +128,7 @@ body {
 .calendar-header h2 {
   color: var(--text-color);
   margin: 0;
-  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-size: 29px !important;
   font-weight: 700;
   background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
   -webkit-background-clip: text;
@@ -863,10 +863,14 @@ body {
 .task-creator {
   display: flex;
   align-items: center;
+  justify-content: flex-end; 
   gap: 0.25rem;
   margin-top: 0.5rem;
   font-size: 0.75rem;
   color: var(--secondtext-color);
+  text-align: right; 
+  align-self: flex-end; 
+  margin-left: auto; 
 }
 
 /* Checkbox container */
@@ -1440,4 +1444,202 @@ body {
   .theme-options {
     grid-template-columns: 1fr;
   }
+}
+/* Join Task Styles */
+.task-join-container {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    padding: 0 10px;
+    width: 120px; 
+    justify-content: flex-end;
+}
+
+/* When empty, still maintain the space */
+.task-join-container:empty {
+    width: 120px;
+}
+.join-checkbox {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.join-checkbox:hover {
+    background-color: var(--primary-transparent);
+}
+
+.join-checkbox input[type="checkbox"] {
+    display: none;
+}
+
+.join-checkmark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--primary-color);
+    border-radius: 4px;
+    position: relative;
+    transition: all 0.2s ease;
+    background-color: transparent;
+}
+
+.join-checkbox input[type="checkbox"]:checked + .join-checkmark {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.join-checkbox input[type="checkbox"]:checked + .join-checkmark::after {
+    content: "✓";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.join-label {
+    font-size: 14px;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+/* Joined Users Display */
+.joined-users {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    padding: 2px 6px;
+    background-color: var(--accent-color);
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--text-color);
+}
+
+.joined-label {
+    font-size: 12px;
+}
+
+.joined-names {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+/* Task Header Layout Updates */
+.task-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.task-title-container {
+    flex: 1;
+}
+
+.task-priority-creator {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+/* Creator and Joined Users Styling */
+.task-creator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--secondtext-color);
+    background-color: var(--secondary-color);
+    padding: 2px 6px;
+    border-radius: 12px;
+    width: fit-content;
+}
+
+.creator-label {
+    font-size: 10px;
+}
+
+.creator-name {
+    font-weight: 500;
+}
+
+/* Theme-based priority colors */
+.task-priority.theme-based {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    width: fit-content;
+}
+
+.task-priority.priority-high.theme-based {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.task-priority.priority-medium.theme-based {
+    background-color: #fff3e0;
+    color: #ef6c00;
+}
+
+.task-priority.priority-low.theme-based {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+}
+
+
+
+.calendar-page[style*="dark"] .task-creator {
+    background-color: var(--task-bg);
+    color: var(--text-color);
+}
+
+.calendar-page[style*="dark"] .joined-users {
+    background-color: var(--task-bg);
+    color: var(--text-color);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .task-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .task-join-container {
+        margin-left: 0;
+        padding: 0;
+        align-self: flex-start;
+    }
+    
+    .task-priority-creator {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+}
+
+/* Animation for join/leave actions */
+.joined-users {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

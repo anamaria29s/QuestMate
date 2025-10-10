@@ -112,12 +112,15 @@ class SharedTask(models.Model):
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
     completed = models.BooleanField(default=False)
+    completed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='completed_shared_tasks')
     category = models.ForeignKey(SharedTaskCategory, related_name="tasks", on_delete=models.SET_NULL, null=True, blank=True)
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    
+    # New field for joined users
+    joined_users = models.ManyToManyField(User, related_name='joined_shared_tasks', blank=True)
 
     def __str__(self):
         return f"{self.title} ({self.calendar.name})"
-
 
 
 class Membership(models.Model):

@@ -211,8 +211,8 @@ const SharedTaskCategory = ({ calendarId, onCategorySelect, selectedCategory }) 
           headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
         });
         
-        if (selectedCategory === categoryId) {
-          onCategorySelect('all');
+        if (selectedCategory === categoryId || String(selectedCategory) === String(categoryId)) {
+          onCategorySelect(null); 
         }
         
         await fetchCategories();
@@ -254,6 +254,10 @@ const SharedTaskCategory = ({ calendarId, onCategorySelect, selectedCategory }) 
     setShowCategoryMenu(!showCategoryMenu);
   };
 
+  const isAllCategoriesSelected = () => {
+    return selectedCategory === null || selectedCategory === 'all' || selectedCategory === undefined;
+  };
+
   if (!calendarId) {
     return null;
   }
@@ -268,12 +272,12 @@ const SharedTaskCategory = ({ calendarId, onCategorySelect, selectedCategory }) 
           disabled={isLoading}
         >
           <span className="shared-category-indicator" style={{ 
-            backgroundColor: selectedCategory && selectedCategory !== 'all' ? 
+            backgroundColor: !isAllCategoriesSelected() ? 
               categories.find(c => c.id === parseInt(selectedCategory))?.color : 
               'transparent' 
           }}></span>
           <span className="shared-category-button-text">
-            {selectedCategory && selectedCategory !== 'all' ? 
+            {!isAllCategoriesSelected() ? 
               categories.find(c => c.id === parseInt(selectedCategory))?.name : 
               'All Categories'}
           </span>
@@ -283,9 +287,9 @@ const SharedTaskCategory = ({ calendarId, onCategorySelect, selectedCategory }) 
         {showCategoryMenu && (
           <div className="shared-category-dropdown">
             <div 
-              className="shared-category-item shared-category-item all-categories"
+              className={`shared-category-item shared-category-item all-categories ${isAllCategoriesSelected() ? 'selected' : ''}`}
               onClick={() => {
-                onCategorySelect('all');
+                onCategorySelect(null); // Changed from 'all' to null
                 setShowCategoryMenu(false);
               }}
             >

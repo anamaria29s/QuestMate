@@ -15,7 +15,9 @@ const SharedCalendars = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null); // For delete confirmation
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [editingCalendar, setEditingCalendar] = useState(null); 
+  const [editCalendarName, setEditCalendarName] = useState(''); 
 
   useEffect(() => {
     fetchCalendars();
@@ -85,6 +87,50 @@ const SharedCalendars = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditCalendar = async (calendarId) => {
+    if (!editCalendarName.trim()) {
+      setError('Please enter a calendar name');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await axios.put(`http://127.0.0.1:8000/api/shared-calendars/${calendarId}/edit/`, {
+        name: editCalendarName,
+      }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access')}`,
+        },
+      });
+      
+      setSuccess(response.data.detail || 'Calendar updated successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+      setEditingCalendar(null);
+      setEditCalendarName('');
+      fetchCalendars();
+      setError(null);
+    } catch (error) {
+      console.error('Error updating calendar:', error);
+      if (error.response?.status === 403) {
+        setError('Only the calendar owner can edit this calendar.');
+      } else {
+        setError(error.response?.data?.detail || 'Failed to update calendar. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startEditing = (calendar) => {
+    setEditingCalendar(calendar.id);
+    setEditCalendarName(calendar.name);
+  };
+
+  const cancelEditing = () => {
+    setEditingCalendar(null);
+    setEditCalendarName('');
   };
 
   const handleInvite = async () => {
@@ -233,10 +279,8 @@ const SharedCalendars = () => {
     setFilteredFriends([]);
   };
 
-  // Get current user from localStorage or context
   const getCurrentUser = () => {
-    // You might want to get this from your auth context instead
-    return localStorage.getItem('username'); // Assuming you store username
+    return localStorage.getItem('username'); 
   };
 
   const currentUser = getCurrentUser();
@@ -249,7 +293,7 @@ const SharedCalendars = () => {
         {success && <div className="success-message">{success}</div>}
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation*/}
       {confirmDelete && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -284,41 +328,89 @@ const SharedCalendars = () => {
             <ul>
               {calendars.map((cal) => {
                 const isOwner = cal.owner === currentUser;
+                const isEditing = editingCalendar === cal.id;
+                
                 return (
                   <li key={cal.id} className="calendar-item">
                     <div className="calendar-info">
-                      <span className="calendar-name">{cal.name}</span>
-                      <span className="calendar-owner">
-                        {isOwner ? 'Owned by you' : `Created by: ${cal.owner}`}
-                      </span>
-                      {cal.member_count && (
-                        <span className="member-count">
-                          {cal.member_count} member{cal.member_count !== 1 ? 's' : ''}
-                        </span>
+                      {isEditing ? (
+                        <div className="edit-form">
+                          <input
+                            type="text"
+                            value={editCalendarName}
+                            onChange={(e) => setEditCalendarName(e.target.value)}
+                            className="input-field edit-input"
+                            placeholder="Calendar name"
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <span className="calendar-name">{cal.name}</span>
+                          <span className="calendar-owner">
+                            {isOwner ? 'Owned by you' : `Created by: ${cal.owner}`}
+                          </span>
+                          {cal.member_count && (
+                            <span className="member-count">
+                              {cal.member_count} member{cal.member_count !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                     <div className="calendar-actions">
-                      <Link to={`/shared-calendar/${cal.id}`} className="action-btn view-btn">
-                        View
-                      </Link>
-                      {isOwner ? (
-                        <button
-                          onClick={() => setConfirmDelete({ id: cal.id, name: cal.name })}
-                          className="action-btn delete-btn"
-                          title="Delete Calendar"
-                          disabled={loading}
-                        >
-                          Delete
-                        </button>
+                      {isEditing ? (
+                        <>
+                          <button
+                            onClick={() => handleEditCalendar(cal.id)}
+                            className="action-btn create-btn"
+                            disabled={loading}
+                          >
+                            {loading ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            className="action-btn cancel-btn"
+                            disabled={loading}
+                          >
+                            Cancel
+                          </button>
+                        </>
                       ) : (
-                        <button
-                          onClick={() => handleLeaveCalendar(cal.id, cal.name)}
-                          className="action-btn leave-btn"
-                          title="Leave Calendar"
-                          disabled={loading}
-                        >
-                          {loading ? 'Leaving...' : 'Leave'}
-                        </button>
+                        <>
+                          <Link to={`/shared-calendar/${cal.id}`} className="action-btn view-btn">
+                            View
+                          </Link>
+                          {isOwner && (
+                            <button
+                              onClick={() => startEditing(cal)}
+                              className="action-btn edit-btn"
+                              title="Edit Calendar Name"
+                              disabled={loading}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          {isOwner ? (
+                            <button
+                              onClick={() => setConfirmDelete({ id: cal.id, name: cal.name })}
+                              className="action-btn delete-btn"
+                              title="Delete Calendar"
+                              disabled={loading}
+                            >
+                              Delete
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleLeaveCalendar(cal.id, cal.name)}
+                              className="action-btn leave-btn"
+                              title="Leave Calendar"
+                              disabled={loading}
+                            >
+                              {loading ? 'Leaving...' : 'Leave'}
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </li>

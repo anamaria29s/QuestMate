@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import Notification from './Notification';
 
 const NotificationContext = createContext();
@@ -17,8 +17,23 @@ export const NotificationProvider = ({ children }) => {
     setNotifications((prev) => prev.filter((notification) => notification.id !== id));
   };
 
+  const clearAllNotifications = () => {
+    setNotifications([]);
+  };
+
+  // Clear all notifications after 3 seconds when notifications array changes
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const timer = setTimeout(() => {
+        clearAllNotifications();
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [notifications.length]);
+
   return (
-    <NotificationContext.Provider value={{ notifications, addNotification, removeNotification }}>
+    <NotificationContext.Provider value={{ notifications, addNotification, removeNotification, clearAllNotifications }}>
       {children}
       <Notification notifications={notifications} removeNotification={removeNotification} />
     </NotificationContext.Provider>

@@ -3,20 +3,25 @@ from rest_framework.validators import UniqueValidator
 from .models import   UserProfile, User, Friendship, Task, SharedCalendar, SharedTask, Membership, Achievement, UserStats, UserAchievement, CalendarStats, TaskCategory, SharedTaskCategory
 
 
+
+
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     bio = serializers.CharField(required=False, allow_blank=True)  
     birth_date = serializers.DateField(required=False, allow_null=True)
     profile_picture = serializers.ImageField(required=False, allow_null=True) 
     friends = serializers.SerializerMethodField()
+    email = serializers.SerializerMethodField()  
 
     class Meta:
         model = UserProfile
-        fields = ['bio', 'birth_date', 'profile_picture', 'friends']
+        fields = ['bio', 'birth_date', 'profile_picture', 'friends', 'email']  
 
     def get_friends(self, obj):
-        # Get the list of friends from the Friendship model
         friends = Friendship.objects.filter(user=obj.user).values_list('friend__username', flat=True)
         return list(friends)
+
+    def get_email(self, obj):  
+        return obj.user.email
 
     def update(self, instance, validated_data):
         instance.bio = validated_data.get('bio', instance.bio)
@@ -105,14 +110,17 @@ class SharedTaskSerializer(serializers.ModelSerializer):
     category_name = serializers.SerializerMethodField()
     category_color = serializers.SerializerMethodField()
     category_id = serializers.SerializerMethodField()
-    created_by_username = serializers.SerializerMethodField()  # Add this field
+    created_by_username = serializers.SerializerMethodField()
+    completed_by_username = serializers.SerializerMethodField()
+    joined_users = serializers.SerializerMethodField()
     
     class Meta:
         model = SharedTask
         fields = ['id', 'calendar', 'title', 'description', 'date', 'is_all_day', 
                   'start_time', 'end_time', 'completed', 'category',
                   'category_name', 'category_color', 'category_id', 'priority', 
-                  'created_by', 'created_by_username']  # Add created_by_username to fields
+                  'created_by', 'created_by_username', 'completed_by', 'completed_by_username',
+                  'joined_users']
     
     def get_category_name(self, obj):
         return obj.category.name if obj.category else None
@@ -123,8 +131,22 @@ class SharedTaskSerializer(serializers.ModelSerializer):
     def get_category_id(self, obj):
         return obj.category.id if obj.category else None
     
-    def get_created_by_username(self, obj):  # Add this method
+    def get_created_by_username(self, obj):
         return obj.created_by.username if obj.created_by else None
+    
+    def get_completed_by_username(self, obj):
+        return obj.completed_by.username if obj.completed_by else None
+    
+    def get_joined_users(self, obj):
+        return [
+            {
+                'id': user.id,
+                'username': user.username,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+            }
+            for user in obj.joined_users.all()
+        ]
        
 class SharedCalendarSerializer(serializers.ModelSerializer):
     tasks = SharedTaskSerializer(many=True, read_only=True)

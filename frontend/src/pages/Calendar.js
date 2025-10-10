@@ -16,24 +16,24 @@ import TaskCategory from './TaskCategory';
 const themes = {
   default: {
     name: 'Default',
-    primary: '#8a2be2',         // Vibrant purple
-    secondary: '#f0e6fa',       // Light purple background
-    accent: '#a64dff',          // Lighter purple for accent
+    primary: '#8a2be2',         
+    secondary: '#f0e6fa',       
+    accent: '#a64dff',          
     text: '#333333',
     secondtext: '#333333',
     calendarBackground: '#ffffff',
-    taskBackground: '#f8f5ff',  // Very light purple background
+    taskBackground: '#f8f5ff',  
     completedTask: '#e8e0f7'    
   },
   dark: {
     name: 'Dark Mode',
-    primary: '#10b981',        // Green primary
-    secondary: '#059669',      // Darker green secondary  
-    accent: '#34d399',         // Light green accent
-    text: '#ffffff',           // White text
-    secondtext: '#d1d5db',     // Light gray secondary text
-    calendarBackground: '#111827',  // Very dark background
-    taskBackground: '#1f2937',      // Dark gray for task cards
+    primary: '#10b981',        
+    secondary: '#059669',       
+    accent: '#34d399',         
+    text: '#ffffff',          
+    secondtext: '#d1d5db',     
+    calendarBackground: '#111827',  
+    taskBackground: '#1f2937',      
     completedTask: '#065f46'  
   },
   pastel: {
@@ -49,24 +49,24 @@ const themes = {
   },
   vibrant: {
     name: 'Vibrant',
-    primary: '#ff5722',         // Dark orange
-    secondary: '#fff3e0',       // Light orange background
-    accent: '#ff8a65',          // Lighter orange for accent elements
+    primary: '#ff5722',         
+    secondary: '#fff3e0',       
+    accent: '#ff8a65',          
     text: '#212121',
     secondtext: '#212121',
     calendarBackground: '#ffffff',
-    taskBackground: '#fff8e6',   // Very light orange background
-    completedTask: '#ffecb3'     // Light orange for completed tasks
+    taskBackground: '#fff8e6',   
+    completedTask: '#ffecb3'     
   },
   professional: {
     name: 'Professional',
-    primary: '#1a237e',         // Dark blue
-    secondary: '#e8eaf6',       // Light blue-gray background
-    accent: '#3949ab',          // Medium blue for accent elements
-    secondtext: '#212121',            // Dark text for better readability
-    calendarBackground: '#ffffff', // White background for calendar
-    taskBackground: '#e8eaf6',   // Light blue-gray for tasks
-    completedTask: '#d1d9ff'     // Light blue for completed tasks
+    primary: '#1a237e',        
+    secondary: '#e8eaf6',       
+    accent: '#3949ab',          
+    secondtext: '#212121',            
+    calendarBackground: '#ffffff', 
+    taskBackground: '#e8eaf6',   
+    completedTask: '#d1d9ff'     
   }
 };
 
@@ -103,10 +103,8 @@ const CalendarPage = () => {
     }, []);
 
     const formatLocalDate = (date) => {
-        // Ensure we're working with a Date object
         const localDate = new Date(date);
         
-        // Get the local date components to avoid timezone issues
         const year = localDate.getFullYear();
         const month = String(localDate.getMonth() + 1).padStart(2, '0');
         const day = String(localDate.getDate()).padStart(2, '0');
@@ -144,12 +142,10 @@ const CalendarPage = () => {
         });
     }
         
-        // Filter by category
         if (categoryFilter !== null) {
             filtered = filtered.filter(task => String(task.category) === String(categoryFilter));
         }
         
-        // Filter by priority
         if (priorityFilter !== null) {
             filtered = filtered.filter(task => task.priority === priorityFilter);
         }
@@ -181,14 +177,11 @@ const CalendarPage = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             
-            // Store all tasks for the day (unfiltered) - this is for the progress bar
             setAllDayTasks(allTasksResponse.data);
             
-            // Build URL with priority sorting parameters
             let url = 'http://127.0.0.1:8000/api/tasks/';
             const params = new URLSearchParams({ date: formattedDate });
             
-            // If we want sorted tasks by priority, use the sorted endpoint
             if (prioritySort !== 'date_only') {
                 url = 'http://127.0.0.1:8000/api/tasks/sorted/';
                 params.append('priority_sort', prioritySort);
@@ -199,7 +192,6 @@ const CalendarPage = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             
-            // Filter by priority if a specific priority is selected
             let filteredTasks = response.data;
             if (priorityFilter) {
                 filteredTasks = response.data.filter(task => task.priority === priorityFilter);
@@ -229,10 +221,9 @@ const CalendarPage = () => {
                 headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
             });
             
-            // Organize tasks by date - use the backend date directly
             const tasksByDate = {};
             response.data.forEach(task => {
-                const dateKey = task.date; // Use backend date as-is
+                const dateKey = task.date; 
                 
                 if (!tasksByDate[dateKey]) {
                     tasksByDate[dateKey] = [];
@@ -240,7 +231,6 @@ const CalendarPage = () => {
                 tasksByDate[dateKey].push(task);
             });
             
-            // Debug logging
             console.log('Tasks by date:', tasksByDate);
             console.log('Current month:', currentMonth);
             
@@ -310,11 +300,9 @@ const CalendarPage = () => {
             setEditingTask(null);
             setIsAdding(false);
             
-            // Reload tasks (this will update both filtered tasks and allDayTasks)
             loadTasks(selectedDate);
-            loadCategories(); // Refresh categories in case new ones were added
+            loadCategories(); 
             
-            // Update dateTasksMap for calendar view
             const dateKey = formatLocalDate(selectedDate);
             const currentDateTasks = dateTasksMap[dateKey] || [];
             
@@ -381,10 +369,8 @@ const CalendarPage = () => {
                 headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
             });
             
-            // Reload tasks (this will update both tasks and allDayTasks)
             loadTasks(selectedDate);
             
-            // Update dateTasksMap
             const dateKey = formatLocalDate(selectedDate);
             const currentDateTasks = dateTasksMap[dateKey] || [];
             const updatedTasks = currentDateTasks.filter(t => t.id !== taskId);
@@ -407,10 +393,8 @@ const CalendarPage = () => {
                 headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
             });
             
-            // Reload tasks (this will update both tasks and allDayTasks)
             loadTasks(selectedDate);
             
-            // Update dateTasksMap for calendar view
             const dateKey = formatLocalDate(selectedDate);
             const currentDateTasks = dateTasksMap[dateKey] || [];
             const updatedTasks = currentDateTasks.map(t => 
@@ -485,7 +469,6 @@ const CalendarPage = () => {
         return timeString.substring(0, 5); 
     };
 
-    // New function to handle adding a task from availability checker
     const handleAddTaskFromAvailability = (date, startTime, endTime) => {
         setSelectedDate(date);
         setIsAllDay(false);
@@ -791,7 +774,6 @@ const CalendarPage = () => {
             </div>
 
             <div className='calendar-filter'>
-                {/* Use TaskCategory component instead of built-in category manager */}
                 <TaskCategory 
                     onCategorySelect={setCategoryFilter}
                     selectedCategory={categoryFilter === 'all' ? null : categoryFilter}
@@ -835,9 +817,9 @@ const CalendarPage = () => {
                                     onChange={(e) => setPrioritySort(e.target.value)}
                                     className="sort-select"
                                 >
+                                    <option value="none">Date Only</option>
                                     <option value="high_first">High Priority First</option>
                                     <option value="low_first">Low Priority First</option>
-                                    <option value="date_only">Date Only</option>
                                 </select>
                                 
                                 <select 
@@ -845,8 +827,8 @@ const CalendarPage = () => {
                                     onChange={(e) => setDateSort(e.target.value)}
                                     className="sort-select"
                                 >
-                                    <option value="asc">Oldest First</option>
-                                    <option value="desc">Newest First</option>
+                                    <option value="asc">Newest First</option>
+                                    <option value="desc">Oldest First</option>
                                 </select>
                             </div>
                         </div>

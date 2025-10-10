@@ -14,24 +14,24 @@ import axios from 'axios';
 const themes = {
   default: {
     name: 'Default',
-    primary: '#8a2be2',         // Vibrant purple
-    secondary: '#f0e6fa',       // Light purple background
-    accent: '#a64dff',          // Lighter purple for accent
+    primary: '#8a2be2',        
+    secondary: '#f0e6fa',       
+    accent: '#a64dff',         
     text: '#333333',
     secondtext: '#333333',
     calendarBackground: '#ffffff',
-    taskBackground: '#f8f5ff',  // Very light purple background
-    completedTask: '#e8e0f7'    // Light purple for completed tasks
+    taskBackground: '#f8f5ff',  
+    completedTask: '#e8e0f7'    
   },
   dark: {
     name: 'Dark Mode',
-    primary: '#10b981',        // Green primary
-    secondary: '#059669',      // Darker green secondary  
-    accent: '#34d399',         // Light green accent
-    text: '#ffffff',           // White text
-    secondtext: '#d1d5db',     // Light gray secondary text
-    calendarBackground: '#111827',  // Very dark background
-    taskBackground: '#1f2937',      // Dark gray for task cards
+    primary: '#10b981',        
+    secondary: '#059669',      
+    accent: '#34d399',         
+    text: '#ffffff',          
+    secondtext: '#d1d5db',     
+    calendarBackground: '#111827',  
+    taskBackground: '#1f2937',      
     completedTask: '#065f46'  
   },
   pastel: {
@@ -47,25 +47,25 @@ const themes = {
   },
   vibrant: {
     name: 'Vibrant',
-    primary: '#ff5722',         // Dark orange
-    secondary: '#fff3e0',       // Light orange background
-    accent: '#ff8a65',          // Lighter orange for accent elements
+    primary: '#ff5722',        
+    secondary: '#fff3e0',       
+    accent: '#ff8a65',          
     text: '#212121',
     secondtext: '#212121',
     calendarBackground: '#ffffff',
-    taskBackground: '#fff8e6',   // Very light orange background
-    completedTask: '#ffecb3'     // Light orange for completed tasks
+    taskBackground: '#fff8e6',   
+    completedTask: '#ffecb3'     
   },
   professional: {
     name: 'Professional',
-    primary: '#1a237e',         // Dark blue
-    secondary: '#e8eaf6',       // Light blue-gray background
-    accent: '#3949ab',          // Medium blue for accent elements
-    text: '#212121',            // Dark text for better readability
+    primary: '#1a237e',         
+    secondary: '#e8eaf6',       
+    accent: '#3949ab',          
+    text: '#212121',           
     secondtext: '#212121',
-    calendarBackground: '#ffffff', // White background for calendar
-    taskBackground: '#e8eaf6',   // Light blue-gray for tasks
-    completedTask: '#d1d9ff'     // Light blue for completed tasks
+    calendarBackground: '#ffffff', 
+    taskBackground: '#e8eaf6',   
+    completedTask: '#d1d9ff'     
   }
 };
 
@@ -104,18 +104,75 @@ const SharedCalendarPage = () => {
     const [prioritySort, setPrioritySort] = useState('high_first');
     const [dateSort, setDateSort] = useState('asc');
 
+    // Current user state
+    const [currentUser, setCurrentUser] = useState(null);
+
     useEffect(() => {
         const savedTheme = localStorage.getItem(`calendar_theme_${calendarId}`);
         if (savedTheme && themes[savedTheme]) {
             setCurrentTheme(savedTheme);
         }
+        
+        // Load current user info
+        loadCurrentUser();
     }, [calendarId]);
 
+    const loadCurrentUser = async () => {
+        try {
+            console.log('=== DEBUG loadCurrentUser ===');
+            console.log('Access token:', localStorage.getItem('access'));
+            
+            // Încearcă să extragi username-ul din token JWT
+            const token = localStorage.getItem('access');
+            if (!token) {
+                console.log('No access token found');
+                return;
+            }
+            
+            try {
+                // Decodifică payload-ul JWT
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                console.log('Token payload:', payload);
+                
+                // Încearcă să găsești username-ul în token
+                const username = payload.username || payload.user || payload.sub || payload.user_id || payload.email;
+                console.log('Username from token:', username);
+                
+                if (username) {
+                    // Folosește endpoint-ul pentru profil cu username-ul
+                    const response = await axios.get(`http://127.0.0.1:8000/api/profile/${username}/`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    console.log('Profile response:', response.data);
+                    setCurrentUser(response.data);
+                    return;
+                }
+            } catch (tokenError) {
+                console.log('Error parsing token:', tokenError);
+            }
+            
+            // Dacă nu am găsit username în token, încearcă să-l găsești în localStorage
+            const savedUsername = localStorage.getItem('username');
+            if (savedUsername) {
+                console.log('Username from localStorage:', savedUsername);
+                const response = await axios.get(`http://127.0.0.1:8000/api/profile/${savedUsername}/`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                console.log('Profile response:', response.data);
+                setCurrentUser(response.data);
+                return;
+            }
+            
+            console.log('No username found in token or localStorage');
+            
+        } catch (error) {
+            console.error("Error fetching current user:", error);
+        }
+    };
+
     const formatLocalDate = (date) => {
-        // Ensure we're working with a Date object
         const localDate = new Date(date);
         
-        // Get the local date components to avoid timezone issues
         const year = localDate.getFullYear();
         const month = String(localDate.getMonth() + 1).padStart(2, '0');
         const day = String(localDate.getDate()).padStart(2, '0');
@@ -123,7 +180,6 @@ const SharedCalendarPage = () => {
         return `${year}-${month}-${day}`;
     };
 
-    // Load calendar info
     const loadCalendarInfo = useCallback(async () => {
         try {
             const response = await axios.get(`http://127.0.0.1:8000/api/shared-calendars/${calendarId}/`, {
@@ -135,7 +191,6 @@ const SharedCalendarPage = () => {
         }
     }, [calendarId]);
 
-    // Load categories
     const loadCategories = useCallback(async () => {
         try {
             const response = await axios.get(`http://127.0.0.1:8000/api/shared-calendars/${calendarId}/categories/`, {
@@ -158,8 +213,7 @@ const SharedCalendarPage = () => {
                 return;
             }
 
-            // Use the specific date endpoint to get tasks for the selected date only
-            const response = await axios.get(`http://127.0.0.1:8000/api/shared-tasks/${calendarId}/`, {
+            const response = await axios.get(`http://127.0.0.1:8000/api/shared-tasks/${calendarId}/sorted`, {
                 params: { 
                     date: formattedDate,
                     priority_sort: prioritySort !== 'date_only' ? prioritySort : undefined,
@@ -228,7 +282,7 @@ const SharedCalendarPage = () => {
                 // Organize tasks by date
                 const tasksByDate = {};
                 response.data.forEach(task => {
-                    const dateKey = task.date; // Use backend date as-is
+                    const dateKey = task.date; 
                     
                     if (!tasksByDate[dateKey]) {
                         tasksByDate[dateKey] = [];
@@ -272,7 +326,6 @@ const SharedCalendarPage = () => {
             filtered = filtered.filter(task => String(task.category) === String(categoryFilter));
         }
         
-        // Priority filter is already applied in loadTasks, but keep this for extra safety
         if (priorityFilter !== null) {
             filtered = filtered.filter(task => task.priority === priorityFilter);
         }
@@ -286,7 +339,6 @@ const SharedCalendarPage = () => {
         setIsAdding(false);
         setEditingTask(null);
         resetTaskForm();
-        // loadTasks will be called automatically due to useEffect dependency
     };
 
     const resetTaskForm = () => {
@@ -371,7 +423,6 @@ const SharedCalendarPage = () => {
             });
             loadTasks(selectedDate);
             
-            // Update dateTasksMap
             const dateKey = formatLocalDate(selectedDate);
             const currentDateTasks = dateTasksMap[dateKey] || [];
             const updatedTasks = currentDateTasks.filter(t => t.id !== taskId);
@@ -396,7 +447,6 @@ const SharedCalendarPage = () => {
             console.log('Task toggled successfully');
             loadTasks(selectedDate);
             
-            // Update dateTasksMap for calendar view
             const dateKey = formatLocalDate(selectedDate);
             const currentDateTasks = dateTasksMap[dateKey] || [];
             const updatedTasks = currentDateTasks.map(t => 
@@ -436,6 +486,117 @@ const SharedCalendarPage = () => {
         } catch (error) {
             console.error("Error toggling task:", error);
         }
+    };
+
+    const handleJoinTask = async (task) => {
+        try {
+            console.log('=== DEBUG handleJoinTask ===');
+            console.log('Joining task:', task.title);
+            console.log('Before join - isUserJoined:', isUserJoined(task));
+            
+            const response = await axios.post(`http://127.0.0.1:8000/api/shared-tasks/${calendarId}/${task.id}/join/`, {}, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
+            });
+            
+            console.log('Join task response:', response.data);
+            
+            // Refresh tasks to show updated joined users
+            await loadTasks(selectedDate);
+            
+            console.log('After join - tasks refreshed');
+            
+            addNotification({
+                type: 'success',
+                title: 'Joined Successfully! 🤝',
+                message: `You have joined the task "${task.title}"`
+            });
+        } catch (error) {
+            console.error("Error joining task:", error);
+            addNotification({
+                type: 'error',
+                title: 'Join Failed',
+                message: 'Unable to join the task. Please try again.'
+            });
+        }
+    };
+
+    const handleLeaveTask = async (task) => {
+        try {
+            console.log('=== DEBUG handleLeaveTask ===');
+            console.log('Leaving task:', task.title);
+            console.log('Before leave - isUserJoined:', isUserJoined(task));
+            
+            const response = await axios.post(`http://127.0.0.1:8000/api/shared-tasks/${calendarId}/${task.id}/leave/`, {}, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
+            });
+            
+            console.log('Leave task response:', response.data);
+            
+            // Refresh tasks to show updated joined users
+            await loadTasks(selectedDate);
+            
+            console.log('After leave - tasks refreshed');
+            
+            addNotification({
+                type: 'success',
+                title: 'Left Successfully! 👋',
+                message: `You have left the task "${task.title}"`
+            });
+        } catch (error) {
+            console.error("Error leaving task:", error);
+            addNotification({
+                type: 'error',
+                title: 'Leave Failed',
+                message: 'Unable to leave the task. Please try again.'
+            });
+        }
+    };
+
+    const isUserJoined = (task) => {
+        console.log('=== DEBUG isUserJoined ===');
+        console.log('currentUser:', currentUser);
+        console.log('currentUser.id:', currentUser?.id);
+        console.log('currentUser.username:', currentUser?.username);
+        console.log('task.joined_users:', task.joined_users);
+        
+        if (!currentUser || !task.joined_users) {
+            console.log('No currentUser or joined_users');
+            return false;
+        }
+        
+        // Încearcă să găsești utilizatorul prin ID
+        const foundById = task.joined_users.some(user => {
+            console.log('Comparing user ID:', user.id, 'with currentUser.id:', currentUser.id);
+            return user.id === currentUser.id;
+        });
+        
+        // Încearcă să găsești utilizatorul prin username
+        const foundByUsername = task.joined_users.some(user => {
+            console.log('Comparing user username:', user.username, 'with currentUser.username:', currentUser.username);
+            return user.username === currentUser.username;
+        });
+        
+        console.log('Found by ID:', foundById);
+        console.log('Found by username:', foundByUsername);
+        
+        const result = foundById || foundByUsername;
+        console.log('isUserJoined result:', result);
+        console.log('============================');
+        
+        return result;
+    };
+
+    // Verifică dacă utilizatorul curent este creatorul taskului
+    const isTaskCreatedByCurrentUser = (task) => {
+        if (!currentUser || !currentUser.username) return false;
+        
+        // Verifică prin username
+        return task.created_by_username === currentUser.username;
+    };
+
+    // Verifică dacă utilizatorul poate face join la task
+    const canJoinTask = (task) => {
+        return !isTaskCreatedByCurrentUser(task);
     };
 
     const cancelEditing = () => {
@@ -499,7 +660,6 @@ const SharedCalendarPage = () => {
         }
     };
 
-    // Get filtered tasks based on category and priority filters
     const filteredTasks = getFilteredTasks();
 
     const themeStyle = {
@@ -538,7 +698,6 @@ const SharedCalendarPage = () => {
                         <h4>Select Theme</h4>
                         <div className="theme-options">
                             {Object.keys(themes).map(themeName => {
-                                // Get theme-specific classes
                                 const themeClassName = themeName.toLowerCase().replace(' ', '-');
                                 
                                 return (
@@ -729,35 +888,72 @@ const SharedCalendarPage = () => {
                                         </label>
 
                                         {!task.is_all_day && task.start_time && task.end_time && (
-                                                <div className="task-time">
-                                                    {formatTime(task.start_time)} - {formatTime(task.end_time)}
-                                                </div>
-                                            )}
+                                            <div className="task-time">
+                                                {formatTime(task.start_time)} - {formatTime(task.end_time)}
+                                            </div>
+                                        )}
+                                        
                                         <div className="task-title-container">
                                             <h4>{task.title}</h4>
                                             
-                                            
-
                                             <div className="task-priority-creator">
-                                                {/* Show priority for ALL tasks */}
                                                 {task.priority && (
                                                     <div className={`task-priority priority-${task.priority} theme-based`}>
                                                         {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
                                                     </div>
                                                 )}
                                                 
-                                                {/* Show who created the task - positioned under priority */}
+                                                {/* Show who created the task */}
                                                 {task.created_by_username && (
-                                                    <div className="task-creator purple"> {/* You can change the color class here */}
+                                                    <div className="task-creator purple">
                                                         <span className="creator-label">👤</span>
                                                         <span className="creator-name">
                                                             {task.created_by_username}
+                                                            {isTaskCreatedByCurrentUser(task) && ' (You)'}
                                                         </span>
                                                     </div>
                                                 )}
+                                                
+                                                {/* Show joined users */}
+                                                {task.joined_users && task.joined_users.length > 0 && (
+                                                    <div className="joined-users-container">
+                                                        {task.joined_users.map(user => (
+                                                            <div key={user.id} className="task-creator purple">
+                                                                <span className="creator-label">👤</span>
+                                                                <span className="creator-name">
+                                                                    {user.username}
+                                                                    {user.id === currentUser?.id && ' (You)'}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
-
-                                            
+                                        </div>
+                                        
+                                        <div className="task-join-container">
+                                            {canJoinTask(task) && (
+                                                <label className={`join-checkbox ${isUserJoined(task) ? 'joined-state' : ''}`}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={isUserJoined(task)}
+                                                        onChange={() => {
+                                                            if (isUserJoined(task)) {
+                                                                handleLeaveTask(task);
+                                                            } else {
+                                                                handleJoinTask(task);
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span className="join-checkmark"></span>
+                                                    <span className="join-icon">
+                                                        {isUserJoined(task) ? '👋' : '🤝'}
+                                                    </span>
+                                                    <span className="join-label">
+                                                        {isUserJoined(task) ? 'Leave' : 'Join'}
+                                                    </span>
+                                                </label>
+                                            )}
                                         </div>
                                     </div>
 
@@ -829,9 +1025,10 @@ const SharedCalendarPage = () => {
                                 onChange={(e) => setPrioritySort(e.target.value)}
                                 className="sort-select"
                             >
+                                
+                                <option value="none">Date Only</option>
                                 <option value="high_first">High Priority First</option>
                                 <option value="low_first">Low Priority First</option>
-                                <option value="date_only">Date Only</option>
                             </select>
                             
                             <select 
@@ -839,8 +1036,8 @@ const SharedCalendarPage = () => {
                                 onChange={(e) => setDateSort(e.target.value)}
                                 className="sort-select"
                             >
-                                <option value="asc">Oldest First</option>
-                                <option value="desc">Newest First</option>
+                                <option value="asc">Newest First</option>
+                                <option value="desc">Oldest First</option>
                             </select>
                         </div>
                     </div>

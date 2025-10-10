@@ -5,7 +5,9 @@ import './Profile.css';
 
 const Profile = () => {
     const username = localStorage.getItem('username');
-    const email = localStorage.getItem('email');
+    // Remove this line - don't get email from localStorage
+    // const email = localStorage.getItem('email');
+    
     const [profile, setProfile] = useState({});
     const [friendUsername, setFriendUsername] = useState("");
     const [message, setMessage] = useState("");
@@ -192,7 +194,8 @@ const Profile = () => {
                         )}
                     </div>
                     <h2 className="profile-name">{username}</h2>
-                    <div className="profile-email">{email ? email : "No email provided"}</div>
+                    {/* Change this line to use profile.email instead of email from localStorage */}
+                    <div className="profile-email">{profile.email || "No email provided"}</div>
                     <button 
                         className="profile-action-button"
                         onClick={() => navigate(`/profile/${username}/update`)}

@@ -7,7 +7,7 @@ from django.contrib.auth.views import LoginView
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import signup, login, get_profile, add_friend, update_profile, search_users
 urlpatterns = [
-    path('', views.index, name='index'), 
+    path('api/home/', views.index, name='index'), 
     path('api/signup/', signup, name='signup'),
     path('api/login/', login, name='login'),
     path('api/token/refresh/', views.token_refresh, name='token_refresh'),
@@ -40,8 +40,9 @@ urlpatterns = [
     path('api/shared-calendars/accept/', views.accept_calendar_invite, name='accept_calendar_invite'),
     path('api/shared-calendars/decline/', views.decline_calendar_invite, name='decline_calendar_invite'),
     path('api/shared-calendars/invites/', views.list_calendar_invites, name='list_calendar_invites'),
-     # Delete calendar (owner only)
+     # Delete/edit calendar (owner only)
     path('api/shared-calendars/<int:calendar_id>/delete/', views.delete_shared_calendar, name='delete_shared_calendar'),
+    path('api/shared-calendars/<int:calendar_id>/edit/', views.edit_shared_calendar, name='edit_shared_calendar'),
     # Leave calendar (members only)
     path('api/shared-calendars/<int:calendar_id>/leave/', views.leave_shared_calendar, name='leave_shared_calendar'),
 
@@ -51,6 +52,12 @@ urlpatterns = [
     path('api/shared-tasks/<int:calendar_id>/<int:shared_task_id>/delete/', views.delete_shared_task, name='delete_shared_task'),
     path('api/shared-tasks/<int:calendar_id>/<int:shared_task_id>/toggle/', views.toggle_shared_task_completion, name='toggle_shared_task_completion'),
     path('api/shared-tasks/<int:calendar_id>/add/', views.add_shared_task, name='add_shared_task'),
+
+    # Join/Leave Shared Tasks
+    path('api/shared-tasks/<int:calendar_id>/<int:shared_task_id>/join/', views.join_shared_task, name='join_shared_task'),
+    path('api/shared-tasks/<int:calendar_id>/<int:shared_task_id>/leave/', views.leave_shared_task, name='leave_shared_task'),
+
+
 
     # User achievements endpoints
     path('api/user/achievements/', views.get_user_achievements, name='user_achievements'),

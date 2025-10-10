@@ -259,6 +259,7 @@ const AvailabilityChecker = ({ onClose, onAddTask, selectedDate }) => {
     
     const workStart = 8;
     const workEnd = 22;
+    const bufferTime = 1; // 1 hour buffer between tasks
     
     if (tasks.length === 0) {
       return { start: '09:00', end: '10:00' };
@@ -287,6 +288,7 @@ const AvailabilityChecker = ({ onClose, onAddTask, selectedDate }) => {
     let bestStart = workStart;
     let bestDuration = 0;
     
+    // Check gap before first task
     if (busySlots.length > 0 && busySlots[0].start > workStart) {
       const gap = busySlots[0].start - workStart;
       if (gap >= 1 && gap > bestDuration) {
@@ -295,25 +297,28 @@ const AvailabilityChecker = ({ onClose, onAddTask, selectedDate }) => {
       }
     }
     
+    // Check gaps between tasks
     for (let i = 0; i < busySlots.length - 1; i++) {
       const gap = busySlots[i + 1].start - busySlots[i].end;
-      if (gap >= 1 && gap > bestDuration) {
-        bestStart = busySlots[i].end;
-        bestDuration = gap;
+      if (gap >= (1 + bufferTime) && gap > bestDuration) {
+        bestStart = busySlots[i].end + bufferTime; 
+        bestDuration = gap - bufferTime;
       }
     }
     
+    // Check gap after last task
     if (busySlots.length > 0) {
       const lastEnd = busySlots[busySlots.length - 1].end;
       if (lastEnd < workEnd) {
         const gap = workEnd - lastEnd;
-        if (gap >= 1 && gap > bestDuration) {
-          bestStart = lastEnd;
-          bestDuration = gap;
+        if (gap >= (1 + bufferTime) && gap > bestDuration) {
+          bestStart = lastEnd + bufferTime; 
+          bestDuration = gap - bufferTime;
         }
       }
     }
     
+    // If no suitable gap found, default to 9 AM
     if (bestDuration < 1) {
       return { start: '09:00', end: '10:00' };
     }

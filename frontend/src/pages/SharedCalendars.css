@@ -10,6 +10,7 @@
   --success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
   --error: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
   --warning: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  --light-purple: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%);
   
   --text-primary: #333333;
   --text-secondary: #333333;
@@ -97,7 +98,6 @@ body {
   opacity: 0.8;
 }
 
-/* Messages */
 .error-message, .success-message {
   padding: 1rem 1.5rem;
   border-radius: var(--radius-md);
@@ -199,7 +199,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
+  padding: 1rem;
   background: var(--bg-glass);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -207,6 +207,7 @@ body {
   transition: var(--spring);
   position: relative;
   overflow: hidden;
+  margin-right: 2rem; 
 }
 
 .calendar-item::before {
@@ -229,6 +230,7 @@ body {
 .calendar-item:hover::before {
   left: 100%;
 }
+
 
 .calendar-info {
   display: flex;
@@ -316,6 +318,17 @@ body {
   box-shadow: 0 8px 25px rgba(166, 77, 255, 0.4);
 }
 
+.action-btn.edit-btn {
+  background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%);
+  color: var(--text-primary);
+  border: 1px solid rgba(196, 181, 253, 0.3);
+}
+
+.edit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(196, 181, 253, 0.4);
+  background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 100%);
+}
 .delete-btn {
   background: var(--error);
   color: var(--text-light);
@@ -498,11 +511,8 @@ body {
   margin-top: 2rem;
 }
 
-/* Pending Invites */
+/* Pending Invites - Updated styling */
 .invite-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   padding: 1.5rem;
   background: var(--bg-glass);
   backdrop-filter: blur(10px);
@@ -510,6 +520,19 @@ body {
   border-radius: var(--radius-md);
   margin-bottom: 1rem;
   transition: var(--spring);
+  position: relative;
+  overflow: hidden;
+}
+
+.invite-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.6s;
 }
 
 .invite-item:hover {
@@ -517,16 +540,22 @@ body {
   box-shadow: var(--shadow-md);
 }
 
+.invite-item:hover::before {
+  left: 100%;
+}
+
 .invite-info {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .invite-calendar {
   font-weight: 600;
   color: var(--text-primary);
   font-size: 1.1rem;
+  margin-bottom: 0.25rem;
 }
 
 .invite-from {
@@ -538,6 +567,13 @@ body {
 .invite-actions {
   display: flex;
   gap: 0.75rem;
+  justify-content: flex-start;
+}
+
+.invite-actions .action-btn {
+  min-width: 80px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
 }
 
 /* Loading and Empty States */
@@ -627,14 +663,23 @@ body {
     gap: 1.5rem;
   }
   
-  .calendar-item, .invite-item {
+  .calendar-item {
     flex-direction: column;
     align-items: stretch;
     gap: 1rem;
     text-align: center;
   }
   
-  .calendar-actions, .invite-actions {
+  .calendar-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .invite-item {
+    text-align: center;
+  }
+  
+  .invite-actions {
     justify-content: center;
     flex-wrap: wrap;
   }
@@ -670,6 +715,11 @@ body {
   
   .action-btn {
     padding: 0.75rem 1rem;
+    font-size: 0.8rem;
+  }
+  
+  .invite-actions .action-btn {
+    padding: 0.5rem 0.75rem;
     font-size: 0.8rem;
   }
 }
